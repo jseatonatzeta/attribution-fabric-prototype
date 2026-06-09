@@ -271,12 +271,18 @@ const AUDIENCE_LINEAGE = [
   { lineage_id: "lin_004", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/4a8c…b19", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88450"],            graph_snapshot_version: "sg_2026-05-12" },
 ];
 
-const PROFILE_LINEAGE = [
-  { bsin: "bsin_001847", resolved_zids: ["zid_88102","zid_88103"], waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
-  { bsin: "bsin_001904", resolved_zids: ["zid_88207"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
-  { bsin: "bsin_002311", resolved_zids: ["zid_88341","zid_88342","zid_88343"], waterfall_config_id: "wf_account_default_v3", effective_from: "2026-05-14", effective_to: null },
-  { bsin: "bsin_002311", resolved_zids: ["zid_88341"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: "2026-05-14" },
-  { bsin: "bsin_002405", resolved_zids: ["zid_88450"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
+// Identity events: emitted by People Service (inside ZMP) and ingested into EEL like any other event.
+// Each row carries the BSIN, the identifier that was attached/removed, the mutation subtype,
+// and the ZIDs the identifier resolved to at write time. The SCD2 "what ZIDs did this BSIN
+// have at time T?" view is a derived projection of this stream.
+const IDENTITY_EVENTS = [
+  { event_id: "id_001", event_subtype: "bsin_created",         event_time: "2026-04-01T08:00:00Z", bsin: "bsin_001847", identifier: { type: "em_md5", value: "em_md5_xyz…001" }, resolved_zids: ["zid_88102"],                                       waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_002", event_subtype: "identifier_attached", event_time: "2026-04-03T12:14:00Z", bsin: "bsin_001847", identifier: { type: "cs",     value: "cs_abc…001" },     resolved_zids: ["zid_88103"],                                       waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_003", event_subtype: "bsin_created",         event_time: "2026-04-01T08:00:00Z", bsin: "bsin_001904", identifier: { type: "em_md5", value: "em_md5_aaa…044" }, resolved_zids: ["zid_88207"],                                       waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_004", event_subtype: "bsin_created",         event_time: "2026-04-01T08:00:00Z", bsin: "bsin_002311", identifier: { type: "cs",     value: "cs_abc…017" },     resolved_zids: ["zid_88341"],                                       waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_005", event_subtype: "identifier_attached", event_time: "2026-05-14T03:00:00Z", bsin: "bsin_002311", identifier: { type: "cs",     value: "cs_abc…017" },     resolved_zids: ["zid_88341","zid_88342","zid_88343"],               waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_006", event_subtype: "bsin_created",         event_time: "2026-04-01T08:00:00Z", bsin: "bsin_002405", identifier: { type: "em_md5", value: "em_md5_qqq…405" }, resolved_zids: ["zid_88450"],                                       waterfall_config_id: "wf_account_default_v3" },
+  { event_id: "id_007", event_subtype: "identifier_removed",  event_time: "2026-05-22T18:30:00Z", bsin: "bsin_002405", identifier: { type: "ph",     value: "ph/+1-555…7788" }, resolved_zids: ["zid_88451"],                                       waterfall_config_id: "wf_account_default_v3" },
 ];
 
 const AUDIT_TRAIL = [
@@ -546,18 +552,39 @@ SELECT exp_zid, channel, audience_id,
        SUM(credit_share)                    AS credited_count
 FROM matched_touchpoints
 GROUP BY exp_zid, channel, audience_id;` },
-  { name: "7. Project per-ZID credit → BSIN (ZMP profile)",
-    description: "Join per-ZID credit to zmp_profile_lineage as of event_time.",
-    sql: `SELECT p.bsin,
+  { name: "7. Project per-ZID credit → BSIN (via EEL identity events)",
+    description: "Identity events from People Service are ingested into EEL like any other event. Build an as-of-time view of (bsin → resolved_zids) by taking the latest identity event per (bsin, identifier) up to the conversion timestamp, then join per-ZID credit against it. Replaces the separate ZMP-profile-lineage SCD2 store.",
+    sql: `WITH latest_id_event AS (
+  SELECT
+    bsin,
+    identifier_type,
+    identifier_value,
+    resolved_zids,
+    event_subtype,
+    ROW_NUMBER() OVER (
+      PARTITION BY bsin, identifier_type, identifier_value
+      ORDER BY event_time DESC
+    ) AS rn
+  FROM eel.events
+  WHERE event_type  = 'identity'
+    AND account_id  = :account_id
+    AND event_time <= :as_of_time
+), bsin_as_of AS (
+  SELECT bsin,
+         ARRAY_AGG(DISTINCT z.value::string) AS bsin_zids
+  FROM latest_id_event,
+       LATERAL FLATTEN(input => resolved_zids) z
+  WHERE rn = 1
+    AND event_subtype IN ('identifier_attached','bsin_created','bsin_merge')
+  GROUP BY bsin
+)
+SELECT b.bsin,
        SUM(c.credited_count) AS credited_count,
        SUM(c.credited_value) AS credited_value
-FROM per_zid_credit  c
-JOIN zmp_profile_lineage p
-  ON p.account_id = :account_id
- AND ARRAY_CONTAINS(c.exp_zid::variant, p.resolved_zids)
- AND :event_time >= p.effective_from
- AND (p.effective_to IS NULL OR :event_time < p.effective_to)
-GROUP BY p.bsin;` },
+FROM per_zid_credit c
+JOIN bsin_as_of    b
+  ON ARRAYS_OVERLAP(ARRAY_CONSTRUCT(c.exp_zid), b.bsin_zids)
+GROUP BY b.bsin;` },
   { name: "8. Project per-ZID credit → customer_supplied_id",
     description: "Join through audience_lineage to render measurement in the customer's own ID space.",
     sql: `SELECT l.customer_supplied_id, l.customer_id_type,
@@ -1499,8 +1526,8 @@ function FeatureEnhancementsSection() {
 const DATA_TABS = [
   { value: "exposures",        label: "EEL · Exposures" },
   { value: "conversions",      label: "EEL · Conversions" },
+  { value: "identity_events",  label: "EEL · Identity events" },
   { value: "audience_lineage", label: "Lineage · Audience" },
-  { value: "profile_lineage",  label: "Lineage · ZMP profile" },
   { value: "audit_trail",      label: "SuperGraph · Audit trail" },
   { value: "queries",          label: "Joining queries (SQL)" },
 ];
@@ -1565,12 +1592,19 @@ function DataInspector() {
             />
           </div>
         )}
-        {tab === "profile_lineage" && (
+        {tab === "identity_events" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used to roll attribution up to the ZMP profile (BSIN) level — the temporal map lets the engine pick the right ZID set for each event's timestamp even as profile clusters evolve mid-window.</div>
+            <div className="t-small t-sec">Emitted by People Service (inside ZMP) every time a profile's identifier set changes, and ingested into EEL like any other event. The latest event per (bsin, identifier) as of conversion time gives the BSIN's claimed ZID set — replacing the separate ZMP-profile-lineage SCD2 store with a derived projection of this stream.</div>
             <Tbl
-              headers={["bsin", "resolved_zids", "effective_from", "effective_to"]}
-              rows={PROFILE_LINEAGE.map(p => [p.bsin, p.resolved_zids.join(", "), p.effective_from, p.effective_to ?? "(current)"])}
+              headers={["event_id", "subtype", "time", "bsin", "identifier", "resolved_zids"]}
+              rows={IDENTITY_EVENTS.map(i => [
+                i.event_id,
+                i.event_subtype,
+                i.event_time.slice(5, 16).replace("T", " "),
+                i.bsin,
+                `${i.identifier.type}/${i.identifier.value}`,
+                i.resolved_zids.join(", "),
+              ])}
             />
           </div>
         )}
