@@ -1,0 +1,1726 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Zeta Attribution — Identity Fabric Prototype</title>
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<style>
+:root {
+  --bg-page: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-sidebar: #0f1525;
+  --bg-elevated: #f8fafc;
+  --bg-code: #0f172a;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #f3f4f6;
+  --text-code: #e2e8f0;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #dbeafe;
+  --success: #059669;
+  --success-soft: #d1fae5;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --info: #0284c7;
+  --info-soft: #e0f2fe;
+  --pill-bg: #f3f4f6;
+
+  --c-programmatic: #f59e0b;
+  --c-display: #f59e0b;
+  --c-ctv: #8b5cf6;
+  --c-email: #3b82f6;
+  --c-inbox: #14b8a6;
+  --c-web: #dc2626;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif; font-size: 14px; line-height: 1.45; }
+.app { display: flex; min-height: 100vh; }
+
+/* sidebar */
+.sidebar { width: 220px; background: var(--bg-sidebar); color: var(--text-inverse); padding: 16px 0; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 4px 18px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; }
+.sidebar .brand .logo { width: 22px; height: 22px; border-radius: 5px; background: linear-gradient(135deg, #5b6bff, #8b5cf6); display: grid; place-items: center; font-weight: 700; font-size: 12px; color: white; }
+.sidebar .brand .name { font-weight: 700; letter-spacing: 0.06em; font-size: 13px; }
+.sidebar .brand .tag { font-size: 10px; color: rgba(255,255,255,0.6); }
+.sidebar nav { display: flex; flex-direction: column; }
+.sidebar nav a { color: rgba(255,255,255,0.75); padding: 8px 18px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 2px solid transparent; }
+.sidebar nav a:hover { color: white; background: rgba(255,255,255,0.04); }
+.sidebar nav a.active { color: white; background: rgba(37,99,235,0.18); border-left-color: var(--accent); font-weight: 600; }
+.sidebar .account { margin-top: auto; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.08); }
+.sidebar .account .label { font-size: 11px; color: rgba(255,255,255,0.55); }
+.sidebar .account .name { font-size: 12px; font-weight: 600; color: white; }
+.sidebar .account .slug { font-size: 11px; color: rgba(255,255,255,0.55); }
+
+/* main */
+.main { flex: 1; padding: 24px 28px 56px; min-width: 0; max-width: 1440px; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.topbar h1 { font-size: 24px; font-weight: 700; margin: 0; }
+.topbar .meta { color: var(--text-secondary); }
+.spacer { flex: 1; }
+.btn { background: var(--accent); color: white; border: 0; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn:hover { background: var(--accent-strong); }
+.btn.secondary { background: white; color: var(--text-primary); border: 1px solid var(--border-strong); }
+.btn.secondary:hover { background: var(--bg-elevated); }
+
+/* pills */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--pill-bg); color: var(--text-primary); font-size: 12px; font-weight: 500; border: 1px solid var(--border); cursor: default; }
+.pill.clickable { cursor: pointer; }
+.pill.clickable:hover { background: white; }
+.pill.active { background: var(--accent-soft); color: var(--accent-strong); border-color: #bfdbfe; }
+.pill.tone-info { background: var(--info-soft); color: var(--info); border-color: #bae6fd; }
+.pill.tone-success { background: var(--success-soft); color: var(--success); border-color: #a7f3d0; }
+.pill.tone-warning { background: var(--warning-soft); color: var(--warning); border-color: #fde68a; }
+.pill.tone-danger { background: var(--danger-soft); color: var(--danger); border-color: #fecaca; }
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+/* cards */
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+.card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.card-header .right { margin-left: auto; }
+.card-body { padding: 16px; }
+.card-body.tight { padding: 12px; }
+.card-body.flush { padding: 0; }
+
+/* layouts */
+.grid { display: grid; gap: 16px; }
+.grid > * { min-width: 0; }
+.grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grid.mta { grid-template-columns: minmax(0, 3fr) minmax(0, 4fr); }
+.grid.aud-wf { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.grid.inc { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.grid.queries { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.row { display: flex; align-items: center; gap: 8px; }
+.row.wrap { flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.section { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+
+/* KPI stats */
+.stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+.stat .v { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.stat .v.tone-success { color: var(--success); }
+.stat .v.tone-warning { color: var(--warning); }
+.stat .l { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* callout */
+.callout { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; }
+.callout .title { font-weight: 600; margin-bottom: 4px; }
+.callout.info    { background: var(--info-soft);    border-color: #bae6fd; }
+.callout.info .title    { color: var(--info); }
+.callout.success { background: var(--success-soft); border-color: #a7f3d0; }
+.callout.success .title { color: var(--success); }
+.callout.warning { background: var(--warning-soft); border-color: #fde68a; }
+.callout.warning .title { color: var(--warning); }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: white; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th, .tbl td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+.tbl thead th { background: var(--bg-elevated); color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl tbody tr.row-success { background: rgba(5, 150, 105, 0.06); }
+.tbl tbody tr.row-warning { background: rgba(217, 119, 6, 0.06); }
+.tbl tbody tr.row-danger  { background: rgba(220, 38, 38, 0.05); }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl code { background: var(--bg-elevated); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+/* text helpers */
+.t-sec { color: var(--text-secondary); }
+.t-ter { color: var(--text-tertiary); }
+.t-small { font-size: 12px; }
+.t-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.t-bold { font-weight: 700; }
+.t-semi { font-weight: 600; }
+
+/* select */
+select { font-family: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: white; min-width: 220px; }
+
+/* code block */
+pre.sql { margin: 0; padding: 14px; background: var(--bg-code); color: var(--text-code); border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55; overflow-x: auto; }
+
+/* collapsible */
+.collapse-head { cursor: pointer; user-select: none; }
+.chev { display: inline-block; transition: transform 0.15s ease; margin-right: 4px; color: var(--text-tertiary); }
+.chev.open { transform: rotate(90deg); }
+
+/* waterfall editor */
+.wf-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.wf-row:last-child { border-bottom: 0; }
+.wf-index { background: var(--pill-bg); width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.icon-btn { background: none; border: 1px solid var(--border-strong); width: 24px; height: 24px; border-radius: 6px; cursor: pointer; color: var(--text-secondary); display: inline-grid; place-items: center; }
+.icon-btn:hover { background: var(--bg-elevated); }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* charts */
+.chart-frame { position: relative; width: 100%; }
+.chart-frame canvas { display: block !important; box-sizing: border-box; }
+
+/* tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+/* info icon + tooltip */
+.info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 999px;
+  background: var(--pill-bg); color: var(--text-secondary);
+  font-size: 10px; font-weight: 700; font-family: Georgia, serif;
+  cursor: help; position: relative; margin-left: 6px;
+  border: 1px solid var(--border);
+}
+.info-icon:hover { background: var(--accent-soft); color: var(--accent-strong); border-color: #bfdbfe; }
+.info-icon::after {
+  content: attr(data-tip);
+  position: absolute; top: 22px; left: -8px;
+  width: 300px;
+  padding: 10px 12px;
+  background: #1f2937; color: white;
+  font-size: 12px; font-weight: 400; font-family: -apple-system, system-ui, sans-serif;
+  line-height: 1.5; border-radius: 6px;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 9999;
+  text-align: left; white-space: normal;
+  pointer-events: none;
+}
+.info-icon::before {
+  content: ""; position: absolute; top: 16px; left: 0;
+  border: 6px solid transparent; border-bottom-color: #1f2937;
+  opacity: 0; transition: opacity 0.12s ease;
+}
+.info-icon:hover::after, .info-icon:hover::before { opacity: 1; visibility: visible; }
+.info-icon.right::after { left: auto; right: -8px; }
+.info-icon.right::before { left: auto; right: 0; }
+
+</style>
+</head>
+<body>
+<div id="root"><div style="padding:48px;color:#6b7280;font-family:-apple-system,sans-serif;text-align:center">Loading prototype…</div></div>
+<div id="boot-error" style="display:none;padding:24px;background:#fee2e2;color:#991b1b;font-family:-apple-system,sans-serif;border:1px solid #fecaca;border-radius:8px;margin:24px"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+<script>window.ChartJS = window.Chart;</script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
+<script>
+window.addEventListener("error", function (e) {
+  var el = document.getElementById("boot-error");
+  if (el) { el.style.display = "block"; el.textContent = "Boot error: " + (e.message || e.error) + " — open DevTools (⌥⌘I) → Console for full stack."; }
+});
+window.addEventListener("DOMContentLoaded", function () {
+  var missing = [];
+  if (!window.React)    missing.push("React");
+  if (!window.ReactDOM) missing.push("ReactDOM");
+  if (!window.ChartJS)  missing.push("Chart.js");
+  if (!window.Babel)    missing.push("Babel");
+  if (missing.length) {
+    var el = document.getElementById("boot-error");
+    el.style.display = "block";
+    el.textContent = "Failed to load: " + missing.join(", ") + ". Check network access to cdn.jsdelivr.net.";
+  }
+});
+</script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+
+// ============================================================================
+// SAMPLE DATA (mirrors the canvas + the two design docs)
+// ============================================================================
+
+const ACCOUNT = "Zeta Luxury Hotel Collection";
+const CAMPAIGN = {
+  id: "cmp_spring2026_awareness",
+  name: "Spring 2026 Awareness Push",
+  window: "May 10 – Jun 5, 2026 (27 days)",
+  attribution_window_days: 30,
+};
+
+const ID_TYPE_LABEL = {
+  em_md5: "Email (MD5)",
+  em_sha256: "Email (SHA-256)",
+  ph: "Phone",
+  pa: "Postal (hashed)",
+  cb: "BSIN (customer ID)",
+  np: "NPI (healthcare)",
+  cs: "Sizmek cookie",
+  cz: "Zync cookie",
+  cd: "Disqus cookie",
+  mm: "MAID",
+  zz: "Zeta ID",
+  ip: "IP address",
+  ctv: "CTV device ID",
+};
+
+const DEFAULT_WATERFALL = ["em_md5", "em_sha256", "pa", "ph", "cb"];
+
+const AUDIENCES = [
+  { id: "aud_past_guests_loyalty",    name: "Past Guests Loyalty List",       source: "Customer uploaded · postal-keyed",                                size: "2.3M",      lineage_present: true,  waterfall_config_id: "wf_account_default_v3" },
+  { id: "aud_high_intent_travelers",  name: "High-Intent Travelers",          source: "Zeta-native prospect",                                            size: "18.0M",     lineage_present: false, waterfall_config_id: "wf_account_default_v3" },
+  { id: "aud_ctv_lookalike",          name: "CTV Lookalike",                  source: "Partner (ZX)",                                                    size: "4.1M",      lineage_present: false, waterfall_config_id: "wf_account_default_v3" },
+  // ZX decile-randomization sub-audiences (2 of 22 shown — the rest collapsed into the summary row)
+  { id: "aud_zx_d10_trt",             name: "ZX High-Value Travel · D10 TRT", source: "ZX propensity model v8 · decile 10 · treatment arm",              size: "1.28M",     lineage_present: false, waterfall_config_id: "wf_zx_native_v2" },
+  { id: "aud_zx_d10_ctl",             name: "ZX High-Value Travel · D10 CTL", source: "ZX propensity model v8 · decile 10 · ghost control",              size: "0.14M",     lineage_present: false, waterfall_config_id: "wf_zx_native_v2" },
+  { id: "aud_zx_more",                name: "+20 more ZX decile audiences",   source: "Deciles 9–1 + U, each split into TRT/CTL (deciles-as-audiences)", size: "5.7M total",lineage_present: false, waterfall_config_id: "wf_zx_native_v2" },
+];
+
+const AUDIENCE_LINEAGE = [
+  { lineage_id: "lin_001", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/9c4f…a31", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88102","zid_88103"], graph_snapshot_version: "sg_2026-05-12" },
+  { lineage_id: "lin_002", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/1b27…8df", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88207"],            graph_snapshot_version: "sg_2026-05-12" },
+  { lineage_id: "lin_003", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/7e51…c02", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88341","zid_88342","zid_88343"], graph_snapshot_version: "sg_2026-05-12" },
+  { lineage_id: "lin_004", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/4a8c…b19", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88450"],            graph_snapshot_version: "sg_2026-05-12" },
+];
+
+const PROFILE_LINEAGE = [
+  { bsin: "bsin_001847", resolved_zids: ["zid_88102","zid_88103"], waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
+  { bsin: "bsin_001904", resolved_zids: ["zid_88207"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
+  { bsin: "bsin_002311", resolved_zids: ["zid_88341","zid_88342","zid_88343"], waterfall_config_id: "wf_account_default_v3", effective_from: "2026-05-14", effective_to: null },
+  { bsin: "bsin_002311", resolved_zids: ["zid_88341"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: "2026-05-14" },
+  { bsin: "bsin_002405", resolved_zids: ["zid_88450"],             waterfall_config_id: "wf_account_default_v3", effective_from: "2026-04-01", effective_to: null },
+];
+
+const AUDIT_TRAIL = [
+  { identifier_type: "cs", identifier_value: "cs_abc…017", from_zid: "zid_88341",            to_zid: "zid_88342", effective_at: "2026-05-14T03:00:00Z", graph_snapshot_version: "sg_2026-05-14", transition_reason: "cluster_merge" },
+  { identifier_type: "mm", identifier_value: "mm_4f7…ab2", from_zid: null,                   to_zid: "zid_88207", effective_at: "2026-05-21T03:00:00Z", graph_snapshot_version: "sg_2026-05-21", transition_reason: "new_identifier" },
+  { identifier_type: "cz", identifier_value: "cz_9a1…d44", from_zid: "zid_PLACEHOLDER_001",  to_zid: "zid_88450", effective_at: "2026-05-28T03:00:00Z", graph_snapshot_version: "sg_2026-05-28", transition_reason: "new_identifier" },
+];
+
+// EEL exposures: impressions only (incl. ghost_impression for incrementality). propensity_score / propensity_model_id populated only for ZX-style stratified events.
+const EEL_EXPOSURES = [
+  { event_id: "ex_001", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T09:14:22Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…001"},{type:"ip",value:"73.21.x.y"}],  resolved_zids: [{zid:"zid_88102",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_005", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-16T20:33:10Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_001",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_006", source_system: "liveintent", event_subtype: "impression",       channel: "Inbox",   event_time: "2026-05-17T08:22:44Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_aaa…044"},{type:"lidid",value:"li_ff8…200"}], resolved_zids: [{zid:"zid_88207",source_identifier:"em_md5",is_placeholder:false}], cost: 0.011, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_007", source_system: "dsp",        event_subtype: "ghost_impression", channel: "Display", event_time: "2026-05-15T13:01:55Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "ghost",  original_identifiers: [{type:"cs",value:"cs_abc…077"},{type:"ip",value:"98.41.x.y"}],  resolved_zids: [{zid:"zid_88500",source_identifier:"cs",is_placeholder:false}], cost: 0,     propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_008", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T18:55:12Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…017"},{type:"ip",value:"207.55.x.y"}], resolved_zids: [{zid:"zid_88341",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_009", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-20T15:11:02Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_def…102"},{type:"ip",value:"65.18.x.y"}],  resolved_zids: [{zid:"zid_88207",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_010", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-22T21:14:08Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_002",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null },
+  { event_id: "ex_011", source_system: "userver",    event_subtype: "impression",       channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_trt",            exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_zx1…001"}],                       resolved_zids: [{zid:"zid_88102",source_identifier:"em_md5",is_placeholder:false}], cost: 0.010, propensity_score: 0.851, propensity_model_id: "zx_lux_travel_v8" },
+  { event_id: "ex_012", source_system: "userver",    event_subtype: "ghost_impression", channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_ctl",            exposure_arm: "ghost",  original_identifiers: [{type:"em_md5",value:"em_md5_zx1…044"}],                       resolved_zids: [{zid:"zid_88450",source_identifier:"em_md5",is_placeholder:false}], cost: 0,     propensity_score: 0.850, propensity_model_id: "zx_lux_travel_v8" },
+];
+
+const EEL_CONVERSIONS = [
+  { event_id: "cv_001", source_system: "tristan", event_subtype: "web_pixel",        event_time: "2026-05-17T14:02:11Z", original_identifiers: [{type:"em_md5",value:"em_md5_xyz…001"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_88102",source_identifier:"em_md5",is_placeholder:false},{zid:"zid_88103",source_identifier:"em_md5",is_placeholder:false}], conversion_value: 487.0 },
+  { event_id: "cv_002", source_system: "tristan", event_subtype: "offline_purchase", event_time: "2026-05-22T16:30:00Z", original_identifiers: [{type:"pa",value:"pa/1b27…8df"}], resolved_zids: [{zid:"zid_88207",source_identifier:"pa",is_placeholder:false}], conversion_value: 1204.5 },
+  { event_id: "cv_003", source_system: "web_tag", event_subtype: "page_view",        event_time: "2026-05-23T10:15:33Z", original_identifiers: [{type:"ip",value:"73.21.x.y"},{type:"ctv",value:"ctv_dev_4421"}], resolved_zids: [{zid:"zid_PLACEHOLDER_003",source_identifier:"placeholder",is_placeholder:true}], conversion_value: 0 },
+  { event_id: "cv_004", source_system: "tristan", event_subtype: "web_pixel",        event_time: "2026-05-24T19:42:11Z", original_identifiers: [{type:"em_md5",value:"em_md5_aaa…044"},{type:"cs",value:"cs_def…102"}], resolved_zids: [{zid:"zid_88207",source_identifier:"em_md5",is_placeholder:false}], conversion_value: 612.0 },
+  { event_id: "cv_005", source_system: "tristan", event_subtype: "web_pixel",        event_time: "2026-05-29T09:11:42Z", original_identifiers: [{type:"cz",value:"cz_9a1…d44"},{type:"em_md5",value:"em_md5_qqq…405"}], resolved_zids: [{zid:"zid_88450",source_identifier:"em_md5",is_placeholder:false}], conversion_value: 388.0 },
+  { event_id: "cv_006", source_system: "tristan", event_subtype: "web_pixel",        event_time: "2026-05-19T14:55:01Z", original_identifiers: [{type:"cs",value:"cs_abc…017"},{type:"ip",value:"207.55.x.y"}], resolved_zids: [{zid:"zid_88342",source_identifier:"cs",is_placeholder:false}], conversion_value: 521.0 },
+  { event_id: "cv_007", source_system: "tristan", event_subtype: "web_pixel",        event_time: "2026-05-25T11:08:14Z", original_identifiers: [{type:"cs",value:"cs_abc…077"},{type:"ip",value:"98.41.x.y"}], resolved_zids: [{zid:"zid_88500",source_identifier:"cs",is_placeholder:false}], conversion_value: 415.0 },
+];
+
+const HEADLINE = {
+  impressions_opens: 14213926,
+  clicks: 466291,
+  conversions: 18681,
+  conversion_value: 9872400,
+  website_visits: 425029,
+  total_media_cost: 248750,
+};
+
+// Per-arm rollups (incrementality)
+const ARMS = [
+  { id: "served",  label: "Served (treatment)",     desc: "Ad shown / message sent",                                              population: 6412000, conv_rate: 0.00291, color: "#059669" },
+  { id: "ghost",   label: "Ghost (clean control)",  desc: "Eligible, selected, suppressed — nothing delivered (DSP or email/CRM)", population:  712000, conv_rate: 0.00237, color: "#0284c7" },
+  { id: "psa",     label: "PSA (active control)",   desc: "Eligible, public-service ad shown instead",                            population:  224000, conv_rate: 0.00251, color: "#8b5cf6" },
+  { id: "holdout", label: "Holdout (broad control)",desc: "Eligible, excluded from the campaign before activation",                population: 1840000, conv_rate: 0.00210, color: "#9ca3af" },
+];
+const SERVED_RATE  = ARMS.find(a => a.id === "served").conv_rate;
+const GHOST_RATE   = ARMS.find(a => a.id === "ghost").conv_rate;
+const INCREMENTAL_LIFT = (SERVED_RATE - GHOST_RATE) / GHOST_RATE;
+
+// ZX-style propensity-decile stratified incrementality design.
+// The aggregate served + ghost arms above (6.41M / 712K) are the population-weighted total of this decile breakdown.
+const STRATIFIED_DESIGN = {
+  type: "propensity_decile",
+  experiment_id: "exp_spring2026_zx_dr_002",
+  propensity_model_id: "zx_lux_travel_v8",
+  propensity_model_desc: "ZX 'High-Value Travel Intender' propensity model · v8 · refreshed bi-weekly",
+  cadence: "Bi-weekly · 2-week TRT vs CTL window",
+  target_ctl_share: 0.10,
+  significance_test: "Two-sided Z-test on per-decile conversion rates",
+};
+
+// Per-decile populations and outcomes. Allocation %s sum to 100; trt/ctl populations sum to the aggregate served/ghost.
+// trt_med_score / ctl_med_score and the abs % diff column are the homogeneity-validation artifact (modeled on the ZX bi-weekly table).
+const DECILES = [
+  { decile: "10", allocation: 0.20, trt_pop: 1282400, ctl_pop: 142400, trt_conv_rate: 0.00468, ctl_conv_rate: 0.00362, p_value: 0.001, trt_med_score: 0.851, ctl_med_score: 0.850, score_abs_pct_diff: 0.01, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "9",  allocation: 0.17, trt_pop: 1090040, ctl_pop: 121040, trt_conv_rate: 0.00395, ctl_conv_rate: 0.00310, p_value: 0.002, trt_med_score: 0.780, ctl_med_score: 0.779, score_abs_pct_diff: 0.01, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "8",  allocation: 0.17, trt_pop: 1090040, ctl_pop: 121040, trt_conv_rate: 0.00332, ctl_conv_rate: 0.00265, p_value: 0.004, trt_med_score: 0.706, ctl_med_score: 0.705, score_abs_pct_diff: 0.03, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "7",  allocation: 0.10, trt_pop:  641200, ctl_pop:  71200, trt_conv_rate: 0.00281, ctl_conv_rate: 0.00231, p_value: 0.013, trt_med_score: 0.632, ctl_med_score: 0.632, score_abs_pct_diff: 0.01, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "6",  allocation: 0.10, trt_pop:  641200, ctl_pop:  71200, trt_conv_rate: 0.00238, ctl_conv_rate: 0.00199, p_value: 0.041, trt_med_score: 0.560, ctl_med_score: 0.560, score_abs_pct_diff: 0.01, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "5",  allocation: 0.06, trt_pop:  384720, ctl_pop:  42720, trt_conv_rate: 0.00201, ctl_conv_rate: 0.00172, p_value: 0.142, trt_med_score: 0.474, ctl_med_score: 0.474, score_abs_pct_diff: 0.00, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "4",  allocation: 0.06, trt_pop:  384720, ctl_pop:  42720, trt_conv_rate: 0.00168, ctl_conv_rate: 0.00149, p_value: 0.331, trt_med_score: 0.349, ctl_med_score: 0.348, score_abs_pct_diff: 0.03, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "3",  allocation: 0.05, trt_pop:  320600, ctl_pop:  35600, trt_conv_rate: 0.00141, ctl_conv_rate: 0.00130, p_value: 0.499, trt_med_score: 0.279, ctl_med_score: 0.279, score_abs_pct_diff: 0.05, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "2",  allocation: 0.03, trt_pop:  192360, ctl_pop:  21360, trt_conv_rate: 0.00114, ctl_conv_rate: 0.00110, p_value: 0.799, trt_med_score: 0.214, ctl_med_score: 0.212, score_abs_pct_diff: 0.00, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "1",  allocation: 0.03, trt_pop:  192360, ctl_pop:  21360, trt_conv_rate: 0.00092, ctl_conv_rate: 0.00092, p_value: 0.999, trt_med_score: 0.180, ctl_med_score: 0.181, score_abs_pct_diff: 0.17, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+  { decile: "U",  allocation: 0.03, trt_pop:  192360, ctl_pop:  21360, trt_conv_rate: 0.00075, ctl_conv_rate: 0.00075, p_value: 1.000, trt_med_score: null,  ctl_med_score: null,  score_abs_pct_diff: null, trt_avg_freq: 3.0, ctl_avg_freq: 3.0 },
+];
+
+// Aggregate (population-weighted) lift across the deciles. Sanity check: should be very close to the headline INCREMENTAL_LIFT.
+const STRAT_AGG_TRT_POP   = DECILES.reduce((s, d) => s + d.trt_pop, 0);
+const STRAT_AGG_CTL_POP   = DECILES.reduce((s, d) => s + d.ctl_pop, 0);
+const STRAT_AGG_TRT_CONV  = DECILES.reduce((s, d) => s + d.trt_pop * d.trt_conv_rate, 0);
+const STRAT_AGG_CTL_CONV  = DECILES.reduce((s, d) => s + d.ctl_pop * d.ctl_conv_rate, 0);
+const STRAT_AGG_TRT_RATE  = STRAT_AGG_TRT_CONV / STRAT_AGG_TRT_POP;
+const STRAT_AGG_CTL_RATE  = STRAT_AGG_CTL_CONV / STRAT_AGG_CTL_POP;
+const STRAT_AGG_LIFT      = (STRAT_AGG_TRT_RATE - STRAT_AGG_CTL_RATE) / STRAT_AGG_CTL_RATE;
+const STRAT_AGG_INC_CONVS = (STRAT_AGG_TRT_RATE - STRAT_AGG_CTL_RATE) * STRAT_AGG_TRT_POP;
+
+// Diagnostics — quality of the attribution run itself
+const DIAGNOSTICS = {
+  first_pass_match_rate:    0.864,
+  second_pass_rescue_rate:  0.072,   // rescued by audit-trail walk
+  household_rescue_rate:    0.064,   // rescued by household projection
+  placeholder_conv_only:    0.048,   // conversions with only placeholder ZIDs
+  lineage_parity_rate:      0.470,   // % of credited conversions where customer-ID reporting is possible
+  avg_touchpoints_per_conv: 3.2,
+  audit_trail_walk_hits:    1349,
+  household_rescue_hits:    1196,
+  last_eel_ingest:          "2026-06-05 03:14 UTC",
+  last_graph_snapshot:      "sg_2026-06-04",
+  lineage_age_days:         24,
+};
+
+const CHANNEL_COLOR = { Display: "#f59e0b", CTV: "#8b5cf6", Email: "#3b82f6", Inbox: "#14b8a6", "Web Visits": "#dc2626" };
+
+const CHANNELS = [
+  { name: "Display",    impressions: 9120000, conversions_lasttouch: 8214, conversions_firsttouch: 11402, conversions_linear: 9802, conversions_timedecay: 8811, conversions_position: 10120, incremental_conversions: 2410, spend: 128200 },
+  { name: "CTV",        impressions: 2410000, conversions_lasttouch: 1902, conversions_firsttouch:  3201, conversions_linear: 2410, conversions_timedecay: 2018, conversions_position:  2811, incremental_conversions: 1220, spend:  93900 },
+  { name: "Email",      impressions: 1780000, conversions_lasttouch: 5882, conversions_firsttouch:  1912, conversions_linear: 3870, conversions_timedecay: 4882, conversions_position:  3211, incremental_conversions:  410, spend:   3560 },
+  { name: "Inbox",      impressions:  725000, conversions_lasttouch: 2018, conversions_firsttouch:  1488, conversions_linear: 1799, conversions_timedecay: 1902, conversions_position:  1811, incremental_conversions:  612, spend:  18750 },
+  { name: "Web Visits", impressions:  178926, conversions_lasttouch:  665, conversions_firsttouch:   678, conversions_linear:  800, conversions_timedecay:  668, conversions_position:   728, incremental_conversions:  195, spend:   4340 },
+];
+
+const TOP_SOURCES = [
+  { name: "Yahoo",                      value: 1902300 },
+  { name: "9190630.fls.doubleclick.net", value: 1310400 },
+  { name: "About",                      value:  980100 },
+  { name: "Ct Geo (Tristate) 320x50",   value:  744200 },
+  { name: "Ct Geo (Tristate) 300x250",  value:  720900 },
+  { name: "Weather",                    value:  612400 },
+  { name: "Wcs008 Display Recip.",      value:  544700 },
+  { name: "Ct Geo (Tristate) 160x600",  value:  513400 },
+  { name: "Ct Geo (Tristate) 728x90",   value:  478900 },
+  { name: "Wcs008 Display Creative",    value:  421100 },
+];
+
+const MTA_MODELS = [
+  { value: "last_touch",  label: "Last Touch (default)" },
+  { value: "first_touch", label: "First Touch" },
+  { value: "linear",      label: "Linear (even split)" },
+  { value: "time_decay",  label: "Time Decay" },
+  { value: "position",    label: "Position-Based (U-shape)" },
+];
+function modelKey(m) {
+  if (m === "last_touch")  return "conversions_lasttouch";
+  if (m === "first_touch") return "conversions_firsttouch";
+  if (m === "linear")      return "conversions_linear";
+  if (m === "time_decay")  return "conversions_timedecay";
+  return "conversions_position";
+}
+const VIEW_MODES = [
+  { value: "mta", label: "MTA only" },
+  { value: "inc", label: "Incrementality only" },
+  { value: "both", label: "Both" },
+];
+const GROUPINGS = [
+  { value: "zid",      label: "ZID (default)" },
+  { value: "bsin",     label: "ZMP Profile (BSIN)" },
+  { value: "external", label: "Customer ID (via lineage)" },
+  { value: "household", label: "Household" },
+];
+const HOUSEHOLD_ID_TYPES = ["ip", "ctv", "pa"];
+
+function athenaInsights(model, grouping, viewMode) {
+  const out = [
+    { kind: "success", title: "Past Guests Loyalty over-indexes 4×",
+      body: "The loyalty audience is 12% of exposures but produces 47% of model-credited conversions. Lineage parity is 100% on this audience — every conversion can be returned in the customer's postal-hashed ID space." },
+    { kind: "info", title: "Model shift would move credit between channels",
+      body: (
+        model === "last_touch"  ? "Switching to Time Decay would shift ~18% of credit from Email back to Display — Display drives early-funnel exposures that Last Touch under-credits." :
+        model === "first_touch" ? "Switching to Last Touch would shift ~21% of credit from Display to Email — Email is the closer on most journeys." :
+        model === "linear"      ? "Compared to Last Touch, Linear redistributes credit toward Display and CTV. Compared to First Touch, it redistributes toward Email and Inbox." :
+                                  "Time-decay weighting credits recency without fully discounting early exposures. Compared to Last Touch, ~12% of credit moves to Display and CTV." )
+    },
+  ];
+  if (viewMode !== "mta") out.push({
+    kind: "warning", title: "Incremental ≠ Credited — read carefully",
+    body: "Email accounts for 31% of MTA-credited conversions but only 2.6% of incremental conversions, suggesting Email is closing journeys that would have converted anyway. CTV's MTA share looks small but its incremental share is 25.7% — CTV is causing conversions, not closing them.",
+  });
+  if (grouping === "household") out.push({
+    kind: "info", title: "Household projection rescues 6.5% of conversions",
+    body: "1,213 conversions arrived with only IP or CTV identifiers (placeholder ZIDs). Grouping by household via shared IP / CTV / postal recovers them and attributes against household-level exposure.",
+  });
+  if (grouping === "external") out.push({
+    kind: "info", title: "Customer-ID reporting available for 47% of conversions",
+    body: "Audience lineage for Past Guests Loyalty allows you to return measurement in your postal-hashed ID space. The remaining 53% are attributable in ZID or BSIN only.",
+  });
+  return out;
+}
+
+const QUERIES = [
+  { name: "1. Resolve campaign → audiences → lineage + waterfall",
+    description: "Pull the audience lineage + the waterfall config in effect for each source audience.",
+    sql: `SELECT
+  c.campaign_id, c.account_id,
+  a.audience_id, a.name AS audience_name,
+  l.lineage_id, l.customer_supplied_id, l.customer_id_type,
+  l.resolved_zids, l.mapping_path,
+  w.waterfall_config_id, w.ordered_id_types
+FROM campaigns           c
+JOIN campaign_audiences  ca USING (campaign_id)
+JOIN audiences           a  USING (audience_id)
+LEFT JOIN audience_lineage    l  USING (audience_id)
+LEFT JOIN waterfall_config    w  ON w.waterfall_config_id = l.waterfall_config_id
+WHERE c.campaign_id = :campaign_id
+  AND c.account_id  = :account_id;` },
+  { name: "2. Exposure events for the campaign window",
+    description: "EEL impressions (served + ghost), multi-ZID resolved, with arm and original identifiers preserved.",
+    sql: `SELECT
+  event_id, event_time, source_system, event_subtype,
+  channel, audience_id, exposure_arm, experiment_id,
+  original_identifiers, resolved_zids,
+  campaign_id, cost
+FROM eel.exposure_events
+WHERE account_id  = :account_id
+  AND campaign_id = :campaign_id
+  AND event_subtype IN ('impression', 'ghost_impression')
+  AND event_time  BETWEEN :win_start AND :win_end;` },
+  { name: "3. Conversion events in the attribution window",
+    description: "EEL conversions for the account, extended by the campaign's attribution_window_days.",
+    sql: `SELECT
+  event_id, event_time, source_system, event_subtype,
+  original_identifiers, resolved_zids,
+  conversion_value
+FROM eel.conversion_events
+WHERE account_id = :account_id
+  AND event_time BETWEEN :win_start
+                     AND DATEADD(day, :attribution_window_days, :win_end);` },
+  { name: "4. First-pass attribution match (ZID overlap)",
+    description: "Union semantics: a conversion ZID overlapping any exposure ZID is a candidate touchpoint.",
+    sql: `WITH cz AS (
+  SELECT event_id AS conv_id, event_time AS conv_time,
+         f.value:zid::string AS conv_zid, conversion_value
+  FROM eel.conversion_events,
+       LATERAL FLATTEN(input => resolved_zids) f
+), ez AS (
+  SELECT event_id AS exp_id,  event_time AS exp_time,
+         channel, audience_id, exposure_arm,
+         f.value:zid::string AS exp_zid
+  FROM eel.exposure_events,
+       LATERAL FLATTEN(input => resolved_zids) f
+  WHERE campaign_id = :campaign_id
+)
+SELECT cz.conv_id, cz.conv_time, cz.conversion_value,
+       ez.exp_id,  ez.exp_time,  ez.channel, ez.audience_id, ez.exposure_arm
+FROM cz JOIN ez
+  ON cz.conv_zid = ez.exp_zid
+ AND ez.exp_time <= cz.conv_time
+ AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
+  { name: "5. Second-pass audit-trail walk (unmatched conversions)",
+    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the audit trail.",
+    sql: `WITH unmatched AS (
+  SELECT conv_id, original_identifiers FROM ...   /* see step 4 */
+)
+SELECT u.conv_id,
+       at.from_zid AS extended_zid,
+       at.effective_at
+FROM unmatched u,
+     LATERAL FLATTEN(input => u.original_identifiers) ident
+JOIN supergraph.audit_trail at
+  ON at.identifier_type  = ident.value:type::string
+ AND at.identifier_value = ident.value:value::string
+ AND at.effective_at BETWEEN :win_start AND :conv_time;
+-- then JOIN exposure_events again on extended_zid` },
+  { name: "6. Apply attribution model → per-ZID credit table",
+    description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
+    sql: `-- Pseudocode: for each conversion, for each touchpoint t in matched set,
+-- credit_share = MODEL(t, all_touchpoints, conv_time)
+-- e.g. last_touch  -> 1.0 to MAX(exp_time)
+--      first_touch -> 1.0 to MIN(exp_time)
+--      linear      -> 1/N
+--      time_decay  -> exp(-lambda * (conv_time - exp_time))   normalized
+--      position    -> 0.4 first, 0.4 last, 0.2 split middle
+SELECT exp_zid, channel, audience_id,
+       SUM(conversion_value * credit_share) AS credited_value,
+       SUM(credit_share)                    AS credited_count
+FROM matched_touchpoints
+GROUP BY exp_zid, channel, audience_id;` },
+  { name: "7. Project per-ZID credit → BSIN (ZMP profile)",
+    description: "Join per-ZID credit to zmp_profile_lineage as of event_time.",
+    sql: `SELECT p.bsin,
+       SUM(c.credited_count) AS credited_count,
+       SUM(c.credited_value) AS credited_value
+FROM per_zid_credit  c
+JOIN zmp_profile_lineage p
+  ON p.account_id = :account_id
+ AND ARRAY_CONTAINS(c.exp_zid::variant, p.resolved_zids)
+ AND :event_time >= p.effective_from
+ AND (p.effective_to IS NULL OR :event_time < p.effective_to)
+GROUP BY p.bsin;` },
+  { name: "8. Project per-ZID credit → customer_supplied_id",
+    description: "Join through audience_lineage to render measurement in the customer's own ID space.",
+    sql: `SELECT l.customer_supplied_id, l.customer_id_type,
+       SUM(c.credited_count) AS credited_count,
+       SUM(c.credited_value) AS credited_value
+FROM per_zid_credit  c
+JOIN audience_lineage l
+  ON l.account_id  = :account_id
+ AND l.audience_id = c.audience_id
+ AND ARRAY_CONTAINS(c.exp_zid::variant, l.resolved_zids)
+GROUP BY l.customer_supplied_id, l.customer_id_type;` },
+  { name: "9. Household projection (dynamic, from observed identifiers)",
+    description: "Group ZIDs that share any selected household identifier value (IP / CTV / postal) within the window.",
+    sql: `WITH hh_ids AS (
+  SELECT DISTINCT
+    f.value:zid::string AS zid,
+    g.value:type::string  AS hh_type,
+    g.value:value::string AS hh_value
+  FROM eel.events,
+       LATERAL FLATTEN(input => resolved_zids)         f,
+       LATERAL FLATTEN(input => original_identifiers)  g
+  WHERE account_id = :account_id
+    AND event_time BETWEEN :win_start AND :win_end
+    AND g.value:type::string IN (:household_id_types)
+), edges AS (
+  SELECT a.zid AS zid_a, b.zid AS zid_b
+  FROM hh_ids a JOIN hh_ids b USING (hh_type, hh_value)
+  WHERE a.zid < b.zid
+)
+-- compute connected components -> household_id
+-- then SUM per_zid_credit grouped by household_id` },
+  { name: "10. Incrementality — lift by arm and channel",
+    description: "Discard contaminated members (in both arms), then compute treatment − control by channel.",
+    sql: `WITH arm_members AS (
+  SELECT DISTINCT exp_zid AS zid, exposure_arm, experiment_id
+  FROM matched_touchpoints
+), contam AS (
+  SELECT zid
+  FROM arm_members
+  GROUP BY zid, experiment_id
+  HAVING COUNT(DISTINCT exposure_arm) > 1
+), clean AS (
+  SELECT * FROM arm_members WHERE zid NOT IN (SELECT zid FROM contam)
+)
+SELECT channel, exposure_arm,
+       COUNT(DISTINCT zid)                                AS population,
+       SUM(CASE WHEN converted THEN 1 ELSE 0 END)         AS converters,
+       SAFE_DIVIDE(SUM(CASE WHEN converted THEN 1 ELSE 0 END),
+                   COUNT(DISTINCT zid))                   AS conv_rate
+FROM clean LEFT JOIN conversions USING (zid)
+GROUP BY channel, exposure_arm;` },
+  { name: "11. Per-stratum lift (deciles-as-audiences)",
+    description: "Stratified incrementality. Each (decile × arm) audience is its own audience_id; per-decile lift falls out of grouping the standard arm rates by audience_id.",
+    sql: `WITH arm_rates AS (
+  SELECT
+    e.audience_id,
+    e.exposure_arm,
+    COUNT(DISTINCT z.value:zid::string)                                          AS population,
+    SUM(CASE WHEN converted THEN 1 ELSE 0 END)                                   AS converters,
+    SAFE_DIVIDE(SUM(CASE WHEN converted THEN 1 ELSE 0 END),
+                COUNT(DISTINCT z.value:zid::string))                             AS conv_rate
+  FROM eel.exposure_events e,
+       LATERAL FLATTEN(input => e.resolved_zids) z
+  LEFT JOIN conversions c
+         ON c.zid = z.value:zid::string
+        AND c.event_time BETWEEN e.event_time
+                             AND DATEADD(day, :attribution_window_days, e.event_time)
+  WHERE e.campaign_id   = :campaign_id
+    AND e.experiment_id = :experiment_id
+  GROUP BY e.audience_id, e.exposure_arm
+)
+SELECT
+  REGEXP_SUBSTR(a_trt.audience_id, 'd[0-9]+|u', 1, 1, 'i') AS decile,
+  a_trt.population AS trt_pop, a_ctl.population AS ctl_pop,
+  a_trt.conv_rate  AS trt_rate, a_ctl.conv_rate  AS ctl_rate,
+  SAFE_DIVIDE(a_trt.conv_rate - a_ctl.conv_rate, a_ctl.conv_rate) AS lift_vs_ghost
+FROM arm_rates a_trt
+JOIN arm_rates a_ctl
+  ON REPLACE(a_trt.audience_id, '_trt', '_ctl') = a_ctl.audience_id
+ AND a_trt.exposure_arm = 'served'
+ AND a_ctl.exposure_arm = 'ghost'
+ORDER BY decile DESC;` },
+  { name: "12. Per-stratum propensity-score homogeneity (TRT vs CTL)",
+    description: "Validates that randomization within each decile produced balanced TRT and CTL groups on the propensity score — the textbook proof for any stratified design.",
+    sql: `SELECT
+  e.audience_id,
+  e.exposure_arm,
+  COUNT(*)                                                                AS n,
+  MIN(e.propensity_score)                                                 AS min_score,
+  PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY e.propensity_score)        AS p25,
+  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY e.propensity_score)        AS median,
+  PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY e.propensity_score)        AS p75,
+  MAX(e.propensity_score)                                                 AS max_score
+FROM eel.exposure_events e
+WHERE e.account_id        = :account_id
+  AND e.experiment_id     = :experiment_id
+  AND e.propensity_model_id = :propensity_model_id
+GROUP BY e.audience_id, e.exposure_arm;
+-- pivot TRT vs CTL per decile and compute
+--   abs_pct_diff = |TRT.median - CTL.median| / ((TRT.median + CTL.median) / 2) * 100
+-- flag any decile where abs_pct_diff > 0.20%` },
+];
+
+// ============================================================================
+// FORMAT HELPERS
+// ============================================================================
+const fmtInt = (n) => n.toLocaleString("en-US");
+const fmtUsd = (n) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const fmtPct = (n, d=1) => `${(n*100).toFixed(d)}%`;
+const fmtSignedPct = (n, d=1) => { const v = (n*100).toFixed(d); return n >= 0 ? `+${v}%` : `${v}%`; };
+
+// ============================================================================
+// CHART WRAPPER
+// ============================================================================
+function ChartView({ config, height = 240 }) {
+  const wrapRef = useRef(null);
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    if (!wrapRef.current) return;
+    const measure = () => {
+      if (wrapRef.current) setWidth(wrapRef.current.clientWidth || 0);
+    };
+    measure();
+    let obs;
+    if (typeof ResizeObserver !== "undefined") {
+      obs = new ResizeObserver(measure);
+      obs.observe(wrapRef.current);
+    } else {
+      window.addEventListener("resize", measure);
+    }
+    return () => {
+      if (obs) obs.disconnect();
+      else window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canvasRef.current || !window.ChartJS || width === 0) return;
+    if (chartRef.current) {
+      try { chartRef.current.destroy(); } catch (e) {}
+      chartRef.current = null;
+    }
+    try {
+      const merged = {
+        ...config,
+        options: {
+          ...(config.options || {}),
+          responsive: false,
+          maintainAspectRatio: false,
+        },
+      };
+      chartRef.current = new window.ChartJS(canvasRef.current, merged);
+    } catch (err) {
+      console.error("Chart.js render error:", err);
+    }
+    return () => {
+      if (chartRef.current) {
+        try { chartRef.current.destroy(); } catch (e) {}
+        chartRef.current = null;
+      }
+    };
+  }, [JSON.stringify(config), width, height]);
+
+  return (
+    <div ref={wrapRef} className="chart-frame" style={{ height }}>
+      <canvas ref={canvasRef} width={width} height={height} style={{ width: "100%", height: "100%", display: "block" }} />
+    </div>
+  );
+}
+
+// ============================================================================
+// REUSABLE BITS
+// ============================================================================
+function Pill({ children, active, tone, clickable, onClick }) {
+  const cls = ["pill", active && "active", tone && `tone-${tone}`, (clickable || onClick) && "clickable"].filter(Boolean).join(" ");
+  return <span className={cls} onClick={onClick}>{children}</span>;
+}
+function InfoIcon({ tip, align }) {
+  return <span className={`info-icon${align === "right" ? " right" : ""}`} data-tip={tip}>i</span>;
+}
+function Stat({ value, label, tone, tip }) {
+  return (
+    <div className="stat">
+      <div className={`v ${tone ? `tone-${tone}` : ""}`}>{value}</div>
+      <div className="l">{label}{tip && <InfoIcon tip={tip} />}</div>
+    </div>
+  );
+}
+function Callout({ kind, title, children }) {
+  return <div className={`callout ${kind || ""}`}><div className="title">{title}</div><div>{children}</div></div>;
+}
+function Card({ title, info, right, children, flush }) {
+  return (
+    <div className="card">
+      {title && (
+        <div className="card-header">
+          {title}{info && <InfoIcon tip={info} />}
+          {right && <span className="right">{right}</span>}
+        </div>
+      )}
+      <div className={`card-body${flush ? " flush" : ""}`}>{children}</div>
+    </div>
+  );
+}
+function CollapsibleCard({ title, right, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="card">
+      <div className="card-header collapse-head" onClick={() => setOpen(o => !o)}>
+        <span className={`chev ${open ? "open" : ""}`}>▶</span>{title}
+        {right && <span className="right">{right}</span>}
+      </div>
+      {open && <div className="card-body">{children}</div>}
+    </div>
+  );
+}
+function CollapsibleSection({ title, info, badges, meta, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="section">
+      <div className="row collapse-head" onClick={() => setOpen(o => !o)} style={{ cursor: "pointer", userSelect: "none" }}>
+        <span className={`chev ${open ? "open" : ""}`}>▶</span>
+        <h2 style={{ margin: 0, fontSize: 16 }}>{title}{info && <InfoIcon tip={info} />}</h2>
+        {badges}
+        {meta && <><div className="spacer"></div><span className="t-small t-sec">{meta}</span></>}
+      </div>
+      {open && <div className="col" style={{ gap: 12, marginTop: 12 }}>{children}</div>}
+    </div>
+  );
+}
+function Tbl({ headers, rows, columnAlign, rowTone }) {
+  return (
+    <div className="tbl-wrap">
+      <table className="tbl">
+        <thead>
+          <tr>{headers.map((h,i) => <th key={i} className={(columnAlign||[])[i] === "right" ? "num" : ""}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((r,i) => (
+            <tr key={i} className={(rowTone||[])[i] ? `row-${(rowTone||[])[i]}` : ""}>
+              {r.map((c,j) => <td key={j} className={(columnAlign||[])[j] === "right" ? "num" : ""}>{c}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ============================================================================
+// SIDEBAR
+// ============================================================================
+function Sidebar() {
+  const navItems = ["Athena", "Live Marketer", "Campaigns", "Experiences", "Audiences", "Content", "Analytics", "Settings"];
+  return (
+    <aside className="sidebar">
+      <div className="brand">
+        <div className="logo">Z</div>
+        <div><div className="name">ZETA</div><div className="tag">MOBILE</div></div>
+      </div>
+      <nav>
+        {navItems.map(n => (
+          <a key={n} className={n === "Analytics" ? "active" : ""}>{n}</a>
+        ))}
+      </nav>
+      <div className="account">
+        <div className="label">ACCOUNT</div>
+        <div className="name">{ACCOUNT}</div>
+        <div className="slug">zeta-luxury-hotel-collection</div>
+      </div>
+    </aside>
+  );
+}
+
+// ============================================================================
+// TOP BAR
+// ============================================================================
+function TopBar() {
+  return (
+    <div className="topbar">
+      <h1>Attribution</h1>
+      <Pill tone="info"><span className="dot"></span>Athena assistant on</Pill>
+      <div className="spacer"></div>
+      <Pill>Last 30 days</Pill>
+      <Pill>Attribution window: 30d</Pill>
+    </div>
+  );
+}
+
+// ============================================================================
+// CONTROLS
+// ============================================================================
+function Controls({ model, setModel, grouping, setGrouping, hhTypes, setHhTypes, viewMode, setViewMode }) {
+  return (
+    <Card title="Controls">
+      <div className="grid cols-2" style={{ gap: 24 }}>
+        <div className="col" style={{ gap: 12 }}>
+          <div className="t-small t-sec t-semi">View mode</div>
+          <div className="row wrap">
+            {VIEW_MODES.map(v => (
+              <Pill key={v.value} active={viewMode === v.value} onClick={() => setViewMode(v.value)}>{v.label}</Pill>
+            ))}
+          </div>
+          <div className="t-small t-sec t-semi" style={{ marginTop: 6 }}>Multi-touch attribution model</div>
+          <select value={model} onChange={e => setModel(e.target.value)}>
+            {MTA_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
+        <div className="col" style={{ gap: 12 }}>
+          <div className="t-small t-sec t-semi">Grouping</div>
+          <div className="row wrap">
+            {GROUPINGS.map(g => (
+              <Pill key={g.value} active={grouping === g.value} onClick={() => setGrouping(g.value)}>{g.label}</Pill>
+            ))}
+          </div>
+          {grouping === "household" && (
+            <>
+              <div className="t-small t-sec t-semi" style={{ marginTop: 6 }}>Household identifier types</div>
+              <div className="row wrap">
+                {HOUSEHOLD_ID_TYPES.map(t => {
+                  const active = hhTypes.includes(t);
+                  return (
+                    <Pill key={t} active={active} onClick={() => setHhTypes(active ? hhTypes.filter(x => x !== t) : [...hhTypes, t])}>
+                      {ID_TYPE_LABEL[t]}
+                    </Pill>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {grouping === "external" && (
+            <Callout kind="info">
+              Lineage is available for <span className="t-semi">Past Guests Loyalty</span> only (47% of credited conversions). Other audiences fall back to ZID.
+            </Callout>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ============================================================================
+// KPI STRIP
+// ============================================================================
+function KpiStrip({ viewMode }) {
+  const showInc = viewMode !== "mta";
+  const cols = showInc ? "cols-6" : "cols-5";
+  return (
+    <div className={`grid ${cols}`}>
+      <Stat value={fmtInt(HEADLINE.impressions_opens)} label="Impressions & Opens" />
+      <Stat value={fmtInt(HEADLINE.clicks)} label="Clicks" />
+      <Stat value={fmtInt(HEADLINE.conversions)} label="Credited Conversions" />
+      <Stat value={fmtPct(HEADLINE.conversions / HEADLINE.impressions_opens, 2)} label="Conversion Rate" />
+      <Stat value={fmtInt(HEADLINE.website_visits)} label="Website Visits" />
+      {showInc && <Stat value={fmtSignedPct(INCREMENTAL_LIFT)} label="Incremental Lift" tone="success" />}
+    </div>
+  );
+}
+
+// ============================================================================
+// ATHENA
+// ============================================================================
+function AthenaCard({ insights }) {
+  return (
+    <CollapsibleSection
+      title="Athena Insights"
+      info="Natural-language interpretation of the current attribution view, generated by Athena (the in-product generative AI). Insights rewrite themselves whenever you change the model, grouping, or view mode so the narrative tracks what's actually on screen."
+      badges={<Pill tone="info"><span className="dot"></span>live</Pill>}
+      meta="Updated as you change model / grouping / view mode"
+    >
+      <div className={`grid cols-${Math.min(3, insights.length)}`}>
+        {insights.map((i, idx) => <Callout key={idx} kind={i.kind} title={i.title}>{i.body}</Callout>)}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// ============================================================================
+// MTA SECTION
+// ============================================================================
+function MtaSection({ model, channelData, grouping }) {
+  const total = channelData.reduce((s, c) => s + c.credited, 0);
+  const modelLabel = MTA_MODELS.find(m => m.value === model)?.label;
+  const groupingLabel = GROUPINGS.find(g => g.value === grouping)?.label;
+
+  const donutConfig = {
+    type: "doughnut",
+    data: {
+      labels: channelData.map(c => c.name),
+      datasets: [{
+        data: channelData.map(c => c.credited),
+        backgroundColor: channelData.map(c => CHANNEL_COLOR[c.name] || "#94a3b8"),
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false, cutout: "62%",
+      plugins: {
+        legend: { position: "right", labels: { font: { size: 12 } } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${fmtInt(ctx.parsed)} (${fmtPct(ctx.parsed/total)})` } },
+      },
+    },
+  };
+
+  const topSourcesConfig = {
+    type: "bar",
+    data: {
+      labels: TOP_SOURCES.map(s => s.name),
+      datasets: [{ label: "Impressions", data: TOP_SOURCES.map(s => s.value), backgroundColor: "#f59e0b", borderRadius: 3 }],
+    },
+    options: {
+      indexAxis: "y", maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtInt(ctx.parsed.x) } } },
+      scales: {
+        x: { ticks: { callback: v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v }, title: { display: true, text: "Impressions" } },
+        y: { ticks: { font: { size: 11 } } },
+      },
+    },
+  };
+
+  return (
+    <CollapsibleSection
+      title="Multi-Touch Attribution"
+      info="Distributes credit for each conversion across all of its qualifying touchpoints using the selected model. Answers 'which channels were involved in journeys that converted', not 'which exposures caused conversions' — that's incrementality."
+      badges={<>
+        <Pill tone="info">{modelLabel}</Pill>
+        <Pill>Grouped by {groupingLabel}</Pill>
+      </>}
+      meta={`${fmtInt(total)} credited conversions allocated across ${channelData.length} channels`}
+    >
+      <div className="grid mta">
+        <Card
+          title="Credited conversions by channel"
+          info="Shows how the chosen attribution model splits credit across channels. Switching the model redistributes the slices — the underlying matched-touchpoint set is the same, only the per-touchpoint credit share changes."
+        ><ChartView config={donutConfig} height={300} /></Card>
+        <Card
+          title="Top 10 sources (impressions)"
+          info="The largest publishers, placements, or sources of impression volume in the window. Source identity comes from the DSP/exchange and is preserved on each EEL exposure event, so the same query powers this chart for any campaign."
+        ><ChartView config={topSourcesConfig} height={300} /></Card>
+      </div>
+      <Card title={topGroupingLabel(grouping)}><TopEntitiesByGrouping grouping={grouping} /></Card>
+    </CollapsibleSection>
+  );
+}
+
+function topGroupingLabel(grouping) {
+  if (grouping === "bsin")     return "Top contributing ZMP profiles (BSIN)";
+  if (grouping === "external") return "Top contributing customer-supplied IDs";
+  if (grouping === "household") return "Top contributing households";
+  return "Top contributing ZIDs";
+}
+
+function TopEntitiesByGrouping({ grouping }) {
+  if (grouping === "bsin") {
+    return <Tbl
+      headers={["BSIN", "ZIDs covered", "Channels touched", "Credited conversions", "Credited value"]}
+      columnAlign={["left","left","left","right","right"]}
+      rows={[
+        ["bsin_001847", "zid_88102, zid_88103", "Display · Email", "2", fmtUsd(487)],
+        ["bsin_001904", "zid_88207", "Inbox · Display", "2", fmtUsd(1817)],
+        ["bsin_002311", "zid_88341, zid_88342, zid_88343", "Display", "1", fmtUsd(521)],
+        ["bsin_002405", "zid_88450", "Email", "1", fmtUsd(388)],
+      ]}
+    />;
+  }
+  if (grouping === "external") {
+    return <Tbl
+      headers={["Customer-supplied ID", "Type", "ZIDs", "Audience", "Credited conversions", "Credited value"]}
+      columnAlign={["left","left","left","left","right","right"]}
+      rows={[
+        ["pa/9c4f…a31", "Postal (hashed)", "zid_88102, zid_88103", "Past Guests Loyalty", "2", fmtUsd(487)],
+        ["pa/1b27…8df", "Postal (hashed)", "zid_88207", "Past Guests Loyalty", "1", fmtUsd(1205)],
+        ["pa/7e51…c02", "Postal (hashed)", "zid_88341, zid_88342, zid_88343", "Past Guests Loyalty", "1", fmtUsd(521)],
+        ["pa/4a8c…b19", "Postal (hashed)", "zid_88450", "Past Guests Loyalty", "1", fmtUsd(388)],
+      ]}
+    />;
+  }
+  if (grouping === "household") {
+    return <Tbl
+      headers={["Household", "Group key(s) observed", "ZIDs in household", "Channels", "Credited", "Credited value"]}
+      columnAlign={["left","left","left","left","right","right"]}
+      rows={[
+        ["hh_001", "ip 73.21.x.y · ctv ctv_dev_4421", "zid_88102, zid_88103, zid_PH_001, zid_PH_002, zid_PH_003", "Display · Email · CTV · Web", "3", fmtUsd(487)],
+        ["hh_002", "ip 207.55.x.y", "zid_88341, zid_88342", "Display", "1", fmtUsd(521)],
+        ["hh_003", "pa 4a8c…b19", "zid_88450", "Email", "1", fmtUsd(388)],
+      ]}
+    />;
+  }
+  return <Tbl
+    headers={["ZID", "Source identifier", "Channels touched", "Credited conversions", "Credited value"]}
+    columnAlign={["left","left","left","right","right"]}
+    rows={[
+      ["zid_88102", "em_md5 / cs", "Display · Email", "1", fmtUsd(244)],
+      ["zid_88103", "em_md5", "Email", "1", fmtUsd(244)],
+      ["zid_88207", "em_md5 / pa", "Inbox · Display", "2", fmtUsd(1817)],
+      ["zid_88342", "cs (via audit-trail walk)", "Display", "1", fmtUsd(521)],
+      ["zid_88450", "em_md5 / cz (placeholder → promoted)", "Email", "1", fmtUsd(388)],
+    ]}
+  />;
+}
+
+// ============================================================================
+// INCREMENTALITY
+// ============================================================================
+function IncrementalitySection({ channelData }) {
+  const totalInc = channelData.reduce((s, c) => s + c.incremental, 0);
+  const psa     = ARMS.find(a => a.id === "psa");
+  const holdout = ARMS.find(a => a.id === "holdout");
+  const liftVsPsa     = (SERVED_RATE - psa.conv_rate) / psa.conv_rate;
+  const liftVsHoldout = (SERVED_RATE - holdout.conv_rate) / holdout.conv_rate;
+
+  const armConfig = {
+    type: "bar",
+    data: {
+      labels: ARMS.map(a => a.label),
+      datasets: [{
+        label: "Conversion rate",
+        data: ARMS.map(a => +(a.conv_rate * 100).toFixed(3)),
+        backgroundColor: ARMS.map(a => a.color),
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y.toFixed(3)}%` } } },
+      scales: {
+        y: { title: { display: true, text: "Conversion rate (%)" }, ticks: { callback: v => `${v}%` } },
+        x: { ticks: { font: { size: 10 } } },
+      },
+    },
+  };
+
+  const incByChannelConfig = {
+    type: "bar",
+    data: {
+      labels: channelData.map(c => c.name),
+      datasets: [{ label: "Incremental conversions", data: channelData.map(c => c.incremental), backgroundColor: "#059669", borderRadius: 3 }],
+    },
+    options: {
+      indexAxis: "y", maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtInt(ctx.parsed.x) } } },
+      scales: { x: { title: { display: true, text: "Incremental conversions" }, ticks: { callback: v => fmtInt(v) } } },
+    },
+  };
+
+  const ARM_TIPS = {
+    served:  "Users who saw the ad or received the message. The treatment group — real campaign creative was delivered to them.",
+    ghost:   "Users who were eligible and selected into the activation, then suppressed at the last moment so nothing was delivered. Covers both the DSP case (auction ran, no ad shown) and the email/CRM case (recipient was selected, no message was sent). The cleanest control because the only difference vs treatment is whether the impression itself happened — most ZX-style decile-randomization tests use this arm.",
+    psa:     "Users who were eligible but had the campaign ad replaced with a public-service announcement in the same slot. An 'active' control that holds creative delivery constant so the comparison isolates the effect of this specific message vs any message.",
+    holdout: "Users in the eligible audience who were deliberately excluded from the campaign before activation — never even considered for delivery. Useful when there's no per-impression selection signal to attach a ghost record to, but noisier than ghost because holdout users may differ from treated users systematically.",
+  };
+
+  return (
+    <CollapsibleSection
+      title="Incrementality"
+      info="Causal measurement that compares the conversion rate of users who saw the ad (served) against matched users who didn't (ghost / PSA / holdout). Lift is what the campaign actually caused — separate from what the MTA model credits to it. The aggregate numbers shown here are the population-weighted total of the per-decile breakdown in the Stratified test design section below."
+      badges={<Pill tone="success">Available · 4-arm experiment · stratified</Pill>}
+      meta="contamination discarded · canonical lift uses served vs ghost"
+    >
+      <Card
+        title="Experiment arms — population, conversion rate, and lift"
+        info="Each row is one experiment arm. Lift is calculated against the served arm; flip the comparison in your head to read 'how much higher is served vs this control'. Hover the info icon on each arm name to see exactly what defines membership in that arm."
+        right={<Pill tone="info">served • ghost • PSA • holdout</Pill>}
+      >
+        <Tbl
+          headers={["Arm", "Description", "Population", "Conv. rate", "Lift vs served"]}
+          columnAlign={["left","left","right","right","right"]}
+          rows={ARMS.map(a => [
+            <span>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: a.color, marginRight: 8 }}></span>
+              {a.label}
+              <InfoIcon tip={ARM_TIPS[a.id]} />
+            </span>,
+            a.desc,
+            fmtInt(a.population),
+            fmtPct(a.conv_rate, 3),
+            a.id === "served" ? "(treatment)" : fmtSignedPct((SERVED_RATE - a.conv_rate) / a.conv_rate),
+          ])}
+        />
+      </Card>
+      <div className="grid inc">
+        <Card
+          title="Conversion rate by arm"
+          info="Raw conversion rate of each experiment arm. Differences between bars are the basis of all lift calculations — bigger gaps between served and the controls mean larger causal lift."
+        >
+          <div className="col" style={{ gap: 16 }}>
+            <ChartView config={armConfig} height={240} />
+            <div className="row wrap" style={{ gap: 16 }}>
+              <Stat value={fmtSignedPct(INCREMENTAL_LIFT)} label="Lift vs ghost (canonical)" tone="success" tip="Served conversion rate divided by ghost conversion rate, minus 1. This is the canonical incrementality number because ghost is the cleanest control — same eligibility as served, just no ad shown." />
+              <Stat value={fmtSignedPct(liftVsPsa)}        label="Lift vs PSA"     tip="Served conversion rate vs PSA. Smaller than lift-vs-ghost when any ad delivery boosts conversions on its own — the gap between this number and lift-vs-ghost is the 'message-specific' part of the campaign's effect." />
+              <Stat value={fmtSignedPct(liftVsHoldout)}    label="Lift vs holdout" tip="Served conversion rate vs holdout. Usually the largest of the three because holdout users are systematically different from treated users, not just unexposed — use this as an upper bound, not a clean causal estimate." />
+            </div>
+            <div className="row wrap" style={{ gap: 16 }}>
+              <Stat value={fmtInt(totalInc)} label="Incremental conversions" tone="success" />
+              <Stat value={fmtUsd(HEADLINE.total_media_cost / Math.max(totalInc, 1))} label="Cost per incremental conv." />
+            </div>
+          </div>
+        </Card>
+        <Card
+          title="Incremental conversions by channel"
+          info="For each channel, the extra conversions attributable to the campaign vs the ghost arm — i.e., conversions that wouldn't have happened without the ad. Different from MTA credit, which can claim conversions the user would have made anyway."
+        ><ChartView config={incByChannelConfig} height={340} /></Card>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// ============================================================================
+// STRATIFIED TEST DESIGN (ZX-style propensity-decile)
+// ============================================================================
+function StratifiedDesignSection() {
+  const liftConfig = {
+    type: "bar",
+    data: {
+      labels: DECILES.map(d => `D${d.decile}`),
+      datasets: [{
+        label: "Lift vs ghost",
+        data: DECILES.map(d => +(((d.trt_conv_rate - d.ctl_conv_rate) / d.ctl_conv_rate) * 100).toFixed(2)),
+        backgroundColor: DECILES.map(d => d.p_value < 0.05 ? "#059669" : "#9ca3af"),
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `Lift vs ghost: ${ctx.parsed.y.toFixed(2)}%` } },
+      },
+      scales: {
+        y: { title: { display: true, text: "Lift vs ghost (%)" }, ticks: { callback: v => `${v}%` } },
+        x: { title: { display: true, text: "Propensity decile (D10 = most likely to convert)" } },
+      },
+    },
+  };
+
+  const popConfig = {
+    type: "bar",
+    data: {
+      labels: DECILES.map(d => `D${d.decile}`),
+      datasets: [
+        { label: "TRT", data: DECILES.map(d => d.trt_pop), backgroundColor: "#059669", borderRadius: 3, stack: "pop" },
+        { label: "CTL", data: DECILES.map(d => d.ctl_pop), backgroundColor: "#0284c7", borderRadius: 3, stack: "pop" },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top" },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtInt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, title: { display: true, text: "Population" }, ticks: { callback: v => fmtInt(v) } },
+      },
+    },
+  };
+
+  const sig = (p) => p < 0.01 ? "p < 0.01" : p < 0.05 ? `p = ${p.toFixed(3)}` : `p = ${p.toFixed(3)} (n.s.)`;
+  const sigTone = (p) => p < 0.05 ? undefined : "warning";
+  const homogTone = (abs) => abs == null ? undefined : abs > 0.20 ? "warning" : undefined;
+
+  return (
+    <CollapsibleSection
+      title="Stratified test design (propensity-decile)"
+      info="ZX-style decile-randomization design. The campaign audience is force-ranked by a propensity model, bucketed into deciles (D10 = most likely to convert, D1 = least, U = unscored), and each decile is independently split into treatment and control. The aggregate lift above is the population-weighted combination of the per-decile lifts shown here."
+      badges={<Pill tone="info">Detected · {STRATIFIED_DESIGN.propensity_model_id}</Pill>}
+      meta={`${STRATIFIED_DESIGN.cadence} · ${STRATIFIED_DESIGN.significance_test}`}
+    >
+      <Callout kind="info">
+        <span className="t-semi">{STRATIFIED_DESIGN.propensity_model_desc}.</span> Each (decile × arm) slice is registered as its own ZMP audience
+        (e.g. <span className="t-mono">aud_zx_d10_trt</span>, <span className="t-mono">aud_zx_d10_ctl</span>) and rides existing audience-lineage plumbing — see Audiences below.
+      </Callout>
+
+      <div className="grid cols-4">
+        <Stat value={fmtSignedPct(STRAT_AGG_LIFT)}    label="Population-weighted lift" tone="success" tip="Per-decile lifts weighted by decile TRT population. This should match the headline lift-vs-ghost number from the Incrementality section above (small drift is from rounding in the per-decile rates)." />
+        <Stat value={fmtInt(Math.round(STRAT_AGG_INC_CONVS))} label="Incremental conversions"  tone="success" tip="Sum across deciles of (TRT rate − CTL rate) × TRT population. Falls cleanly out of the per-decile breakdown." />
+        <Stat value={`${Math.round((STRAT_AGG_CTL_POP / (STRAT_AGG_TRT_POP + STRAT_AGG_CTL_POP)) * 100)}%`} label="Control share" tip="Share of the eligible population assigned to the control (ghost) arm. Held constant across all deciles to preserve per-stratum statistical power." />
+        <Stat value={DECILES.filter(d => d.p_value < 0.05).length + ` of ${DECILES.length}`} label="Deciles with significant lift" tip="Per-decile Z-test at p < 0.05. Significance concentrates in the upper deciles where the propensity model is most predictive — the lower deciles are noisier but still contribute to the aggregate." />
+      </div>
+
+      <div className="grid inc">
+        <Card
+          title="Per-decile lift vs ghost"
+          info="Lift bar per decile. Green = statistically significant at p < 0.05; grey = not significant. The descending pattern from D10 → D1 is the textbook propensity-decile signature — higher-propensity users convert more on their own (baseline conversion is high), so incremental lift compounds where the model says it should."
+        ><ChartView config={liftConfig} height={280} /></Card>
+
+        <Card
+          title="Per-decile allocation (TRT + CTL populations)"
+          info="Stacked population per decile. The allocation across deciles (20% from D10, 17% from D9, …) is set by the campaign designer; the same allocation applies to both TRT and CTL to keep the propensity mix balanced between arms."
+        ><ChartView config={popConfig} height={280} /></Card>
+      </div>
+
+      <Card
+        title="Per-decile breakdown"
+        info="Per-decile populations, conversion rates, and Z-test p-values. The control share column shows the realized split (should be very close to the configured target — drift here means a selection bug). The p-value column tells you which decile-level lifts are statistically separable from zero."
+        right={<Pill tone="success">contamination discarded · same attribution window per arm</Pill>}
+      >
+        <Tbl
+          headers={["Decile", "Allocation", "TRT pop", "CTL pop", "% CTL", "TRT conv. rate", "CTL conv. rate", "Lift vs ghost", "Significance"]}
+          columnAlign={["left","right","right","right","right","right","right","right","left"]}
+          rowTone={DECILES.map(d => sigTone(d.p_value))}
+          rows={DECILES.map(d => {
+            const lift = (d.trt_conv_rate - d.ctl_conv_rate) / d.ctl_conv_rate;
+            const pctCtl = d.ctl_pop / (d.trt_pop + d.ctl_pop);
+            return [
+              `D${d.decile}`,
+              `${(d.allocation * 100).toFixed(0)}%`,
+              fmtInt(d.trt_pop),
+              fmtInt(d.ctl_pop),
+              `${(pctCtl * 100).toFixed(1)}%`,
+              fmtPct(d.trt_conv_rate, 3),
+              fmtPct(d.ctl_conv_rate, 3),
+              d.ctl_conv_rate === 0 ? "—" : fmtSignedPct(lift),
+              sig(d.p_value),
+            ];
+          })}
+        />
+      </Card>
+
+      <Card
+        title="Per-decile propensity-score homogeneity (TRT vs CTL)"
+        info="Median propensity score per arm per decile. Within each decile, TRT and CTL should be near-identical on the score — that's the proof that the randomization within strata was unbiased. Any abs % diff > 0.20% would warrant investigation; values under 0.05% are textbook clean."
+        right={<Pill tone="info">randomization-balance proof</Pill>}
+      >
+        <Tbl
+          headers={["Decile", "TRT median score", "CTL median score", "Abs % diff", "TRT avg freq", "CTL avg freq"]}
+          columnAlign={["left","right","right","right","right","right"]}
+          rowTone={DECILES.map(d => homogTone(d.score_abs_pct_diff))}
+          rows={DECILES.map(d => [
+            `D${d.decile}`,
+            d.trt_med_score == null ? "—" : d.trt_med_score.toFixed(3),
+            d.ctl_med_score == null ? "—" : d.ctl_med_score.toFixed(3),
+            d.score_abs_pct_diff == null ? "— (unscored)" : `${d.score_abs_pct_diff.toFixed(2)}%`,
+            d.trt_avg_freq.toFixed(1) + "×",
+            d.ctl_avg_freq.toFixed(1) + "×",
+          ])}
+        />
+      </Card>
+    </CollapsibleSection>
+  );
+}
+
+// ============================================================================
+// MODEL vs CAUSALITY
+// ============================================================================
+function ModelVsCausality({ channelData }) {
+  const totalCred = channelData.reduce((s, c) => s + c.credited, 0);
+  const totalInc  = channelData.reduce((s, c) => s + c.incremental, 0);
+  const rows = channelData.map(c => {
+    const credShare = c.credited / totalCred;
+    const incShare  = c.incremental / totalInc;
+    const delta     = incShare - credShare;
+    return { ...c, credShare, incShare, delta };
+  });
+
+  const cfg = {
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [
+        { label: "MTA share of credited",    data: rows.map(r => +(r.credShare * 100).toFixed(1)), backgroundColor: "#0284c7", borderRadius: 3 },
+        { label: "Share of incremental",     data: rows.map(r => +(r.incShare * 100).toFixed(1)),  backgroundColor: "#059669", borderRadius: 3 },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "top" }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } } },
+      scales: { y: { title: { display: true, text: "Share (%)" }, ticks: { callback: v => `${v}%` } } },
+    },
+  };
+
+  const tone = (d) => d > 0.03 ? "success" : d < -0.03 ? "warning" : undefined;
+  const interp = (d) => d > 0.03 ? "Under-credited by the model" : d < -0.03 ? "Over-credited — likely closing organic conversions" : "Aligned";
+
+  return (
+    <CollapsibleSection
+      title="Credited vs. Incremental — by channel"
+      info="Side-by-side comparison of each channel's share of MTA-credited conversions (what the model claims) vs share of incremental conversions (what was actually caused). Big positive deltas mean the channel is driving conversions the model under-credits; big negative deltas mean it's closing organic journeys."
+    >
+      <p className="t-sec" style={{ margin: 0 }}>
+        Multi-touch credit and incrementality answer different questions. When they disagree, the channel is either
+        closing journeys that would have converted anyway (over-credited) or driving conversions the model under-credits.
+      </p>
+      <Card
+        title="Share of credit vs. share of incremental conversions"
+        info="Each channel gets two bars: blue is its share of model-credited conversions, green is its share of conversions caused by the campaign per the experiment. When the bars are close, the model is well-calibrated for that channel; when they diverge, the model is either over- or under-claiming."
+      ><ChartView config={cfg} height={320} /></Card>
+      <Tbl
+        headers={["Channel", "MTA share", "Incremental share", "Delta (inc − cred)", "Interpretation"]}
+        columnAlign={["left","right","right","right","left"]}
+        rowTone={rows.map(r => tone(r.delta))}
+        rows={rows.map(r => [r.name, fmtPct(r.credShare), fmtPct(r.incShare), fmtSignedPct(r.delta), interp(r.delta)])}
+      />
+    </CollapsibleSection>
+  );
+}
+
+// ============================================================================
+// DIAGNOSTICS
+// ============================================================================
+function Diagnostics({ grouping }) {
+  const showHh = grouping === "household";
+  return (
+    <div className="section">
+      <div className="row">
+        <h2 style={{ margin: 0, fontSize: 16 }}>Run Diagnostics</h2>
+        <Pill tone="info">trust signals for this attribution run</Pill>
+        <div className="spacer"></div>
+        <span className="t-small t-sec">
+          Last EEL ingest: {DIAGNOSTICS.last_eel_ingest} · SuperGraph snapshot: {DIAGNOSTICS.last_graph_snapshot} · Lineage age: {DIAGNOSTICS.lineage_age_days}d
+        </span>
+      </div>
+      <div className={`grid ${showHh ? "cols-6" : "cols-5"}`}>
+        <Stat
+          value={fmtPct(DIAGNOSTICS.first_pass_match_rate)}
+          label="First-pass match rate"
+          tone="success"
+          tip="Share of conversions that matched at least one exposure via direct ZID overlap. A high rate (>80%) means most measurement happens without needing the audit-trail walk or household projection."
+        />
+        <Stat
+          value={fmtPct(DIAGNOSTICS.second_pass_rescue_rate)}
+          label={`2nd-pass rescue (${fmtInt(DIAGNOSTICS.audit_trail_walk_hits)} convs)`}
+          tip="Share of conversions that had no first-pass match but were rescued by walking the SuperGraph audit trail to find a predecessor ZID. These conversions would be lost in a system without temporal graph history."
+        />
+        {showHh && (
+          <Stat
+            value={fmtPct(DIAGNOSTICS.household_rescue_rate)}
+            label={`Household rescue (${fmtInt(DIAGNOSTICS.household_rescue_hits)} convs)`}
+            tone="success"
+            tip="Share of conversions with only placeholder ZIDs that were rescued by grouping ZIDs that share an IP, CTV device, or postal household identifier. Only computed when the grouping selector is set to Household."
+          />
+        )}
+        <Stat
+          value={fmtPct(DIAGNOSTICS.placeholder_conv_only)}
+          label="Conversions w/ placeholder ZID only"
+          tone="warning"
+          tip="Conversions that arrived with no person-level identifier match — only placeholder ZIDs derived from IP or CTV. Without household projection these are unattributable in person-ID space."
+        />
+        <Stat
+          value={fmtPct(DIAGNOSTICS.lineage_parity_rate)}
+          label="Audience lineage parity"
+          tip="Share of credited conversions where the engine can also return measurement in the customer's own ID space (postal hash, NPI, etc.). Driven by lineage coverage of audiences used in the campaign."
+        />
+        <Stat
+          value={DIAGNOSTICS.avg_touchpoints_per_conv.toFixed(1)}
+          label="Avg touchpoints per converter"
+          tip="Mean number of qualifying exposures matched to each converter. When this is 1.0, last-touch is the only model that makes sense; when it's >3, different multi-touch models tell very different stories."
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// AUDIENCES + WATERFALL
+// ============================================================================
+function AudiencesAndWaterfall({ waterfall, setWaterfall }) {
+  const isCustom = waterfall.length !== DEFAULT_WATERFALL.length || waterfall.some((x, i) => x !== DEFAULT_WATERFALL[i]);
+  const moveUp = (i) => { if (i === 0) return; const n = [...waterfall]; [n[i-1], n[i]] = [n[i], n[i-1]]; setWaterfall(n); };
+  const moveDown = (i) => { if (i === waterfall.length-1) return; const n = [...waterfall]; [n[i+1], n[i]] = [n[i], n[i+1]]; setWaterfall(n); };
+  const reset = () => setWaterfall(DEFAULT_WATERFALL);
+  return (
+    <CollapsibleSection
+      title="Audiences & Waterfall"
+      info="The audiences feeding this campaign and the identifier-resolution waterfall used to assign each member a ZID. The waterfall is captured at audience upload time and can be re-ordered here for the current attribution run without changing the audience itself."
+      badges={isCustom ? <Pill tone="warning">Custom override</Pill> : <Pill>Original</Pill>}
+    >
+      <div className="grid aud-wf">
+        <Card title="Audiences attached to this campaign">
+          <Tbl
+            headers={["Audience", "Source", "Size", "Lineage", "Waterfall (original)"]}
+            rowTone={AUDIENCES.map(a => a.lineage_present ? "success" : undefined)}
+            rows={AUDIENCES.map(a => [a.name, a.source, a.size, a.lineage_present ? "Yes (customer-ID reporting available)" : "No (Zeta-native)", a.waterfall_config_id])}
+          />
+        </Card>
+        <Card title="Waterfall (used for ZID resolution)">
+          <div className="col" style={{ gap: 10 }}>
+            <div className="t-small t-sec">
+              Reorder for this attribution run. The original captured at audience upload time was <span className="t-semi">{DEFAULT_WATERFALL.join(" → ")}</span>.
+            </div>
+            <div>
+              {waterfall.map((id, i) => (
+                <div className="wf-row" key={id}>
+                  <div className="wf-index">{i+1}</div>
+                  <div className="t-semi">{ID_TYPE_LABEL[id] || id}</div>
+                  <div className="t-ter t-small t-mono">{id}</div>
+                  <div className="spacer"></div>
+                  <button className="icon-btn" title="Move up"   onClick={() => moveUp(i)}   disabled={i===0}>↑</button>
+                  <button className="icon-btn" title="Move down" onClick={() => moveDown(i)} disabled={i===waterfall.length-1}>↓</button>
+                </div>
+              ))}
+            </div>
+            {isCustom ? (
+              <div className="row" style={{ marginTop: 4 }}>
+                <button className="btn secondary" onClick={reset}>Reset to original</button>
+                <button className="btn">Save as new account default</button>
+              </div>
+            ) : (
+              <div className="t-small t-ter">
+                Tip: reordering applies the new waterfall to MTA only. Incrementality always uses the original waterfall.
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// ============================================================================
+// SUPPORTED FEATURE ENHANCEMENTS
+// ============================================================================
+const FEATURE_ENHANCEMENTS = [
+  { num: 1, name: "Lookback / attribution window slider",
+    body: "Interactive control to change the conversion attribution window without leaving the page (1, 7, 14, 30, 60, 90 days). Re-runs joins 4 and 5 against the same EEL events." },
+  { num: 2, name: "Compare two MTA models side-by-side",
+    body: "Pick a second model in addition to the primary. The donut and channel table render both, with per-channel deltas highlighting where credit moves between models." },
+  { num: 3, name: "Cost / ROAS overlay",
+    body: "Adds spend, cost per credited conversion, and cost per incremental conversion by channel. Pulled directly from the cost field already preserved on EEL exposures." },
+  { num: 4, name: "Touchpoint frequency distribution",
+    body: "Histogram of touches per converter. Often the most persuasive argument against last-touch — when the median converter has 4+ touches, last-touch is throwing data away." },
+  { num: 5, name: "Journey / sequence chart",
+    body: "Sankey or sequence visualization of the top conversion paths, with median time between touches. Replaces the static experience cards in today's UI with the actual sequence data." },
+  { num: 8, name: "Confidence intervals on incrementality",
+    body: "Wilson 95% CI on each arm's conversion rate. Without this, lift is unfalsifiable — adding CIs lets the user immediately see whether the experiment is powered." },
+  { num: 9, name: "Per-audience drill-down",
+    body: "Click an audience row to filter the entire dashboard to that audience. EEL already keys exposures by audience_id, so this is a free filter through every section." },
+  { num: 10, name: "Saved views",
+    body: "Name and bookmark any {model, grouping, waterfall, view mode} combo, shareable by URL. Most-asked-for marketer feature, and the only one that needs a small app-level store (attribution_views table)." },
+  { num: 13, name: "Stratified-experiment drill-down (propensity-decile, geo-test, etc.)",
+    body: "Per-stratum lift, allocation, and homogeneity-validation views for any campaign whose audiences are tagged as a stratified-design family — demonstrated for ZX-style propensity-decile randomization in the Stratified test design section above. Reuses the standard audience_id plumbing (deciles-as-audiences) plus optional propensity_score / propensity_model_id fields on EEL exposures; no new schema concept required." },
+];
+
+function FeatureEnhancementsSection() {
+  return (
+    <div className="section">
+      <h2 style={{ margin: 0, fontSize: 16 }}>Supported Feature Enhancements</h2>
+      <p className="t-sec" style={{ margin: 0 }}>
+        Features the fabric already supports — these can be added to the UI without changes to EEL, the lineage stores, or the SuperGraph audit trail.
+      </p>
+      <Card flush>
+        <div>
+          {FEATURE_ENHANCEMENTS.map((f, i) => (
+            <div key={f.num} style={{ padding: "14px 16px", borderBottom: i === FEATURE_ENHANCEMENTS.length - 1 ? "0" : "1px solid var(--border)", display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div style={{ minWidth: 28, height: 28, borderRadius: 6, background: "var(--accent-soft)", color: "var(--accent-strong)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 13 }}>{f.num}</div>
+              <div className="col" style={{ gap: 2, flex: 1 }}>
+                <div className="t-semi">{f.name}</div>
+                <div className="t-sec t-small">{f.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// DATA INSPECTOR
+// ============================================================================
+const DATA_TABS = [
+  { value: "exposures",        label: "EEL · Exposures" },
+  { value: "conversions",      label: "EEL · Conversions" },
+  { value: "audience_lineage", label: "Lineage · Audience" },
+  { value: "profile_lineage",  label: "Lineage · ZMP profile" },
+  { value: "audit_trail",      label: "SuperGraph · Audit trail" },
+  { value: "queries",          label: "Joining queries (SQL)" },
+];
+
+function DataInspector() {
+  const [tab, setTab] = useState("exposures");
+  const [qi, setQi] = useState(0);
+  return (
+    <div className="section">
+      <div className="row">
+        <h2 style={{ margin: 0, fontSize: 16 }}>Data Inspector</h2>
+        <Pill tone="info">sample data + 10 queries</Pill>
+        <div className="spacer"></div>
+        <span className="t-small t-sec">
+          The fabric stores feeding everything above. Each tab includes a one-sentence note on what the data is used for.
+        </span>
+      </div>
+      <Card>
+        <div className="tabs">
+          {DATA_TABS.map(t => <Pill key={t.value} active={tab===t.value} onClick={() => setTab(t.value)}>{t.label}</Pill>)}
+        </div>
+        {tab === "exposures" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used as the candidate touchpoint set the attribution engine matches conversions back to — every ad impression delivered for the campaign, served and ghost alike. The propensity columns are populated only for events from stratified-design experiments (ZX-style decile randomization); they're null for everything else.</div>
+            <Tbl
+              headers={["event_id", "source", "subtype", "channel", "time", "arm", "audience", "original_identifiers", "resolved_zids", "propensity_score", "propensity_model"]}
+              columnAlign={["left","left","left","left","left","left","left","left","left","right","left"]}
+              rows={EEL_EXPOSURES.map(e => [
+                e.event_id, e.source_system, e.event_subtype, e.channel,
+                e.event_time.slice(5, 16).replace("T", " "), e.exposure_arm,
+                e.audience_id.replace("aud_", ""),
+                e.original_identifiers.map(i => `${i.type}/${i.value}`).join(", "),
+                e.resolved_zids.map(z => z.is_placeholder ? `${z.zid} (placeholder)` : z.zid).join(", "),
+                e.propensity_score == null ? "—" : e.propensity_score.toFixed(3),
+                e.propensity_model_id ?? "—",
+              ])}
+            />
+          </div>
+        )}
+        {tab === "conversions" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used as the outcomes the engine tries to credit back to exposures — every conversion in the attribution window, with its full identifier set preserved so the second pass and household projection can rescue ones the first pass misses.</div>
+            <Tbl
+              headers={["event_id", "source", "subtype", "time", "original_identifiers", "resolved_zids", "conversion_value"]}
+              columnAlign={["left","left","left","left","left","left","right"]}
+              rows={EEL_CONVERSIONS.map(c => [
+                c.event_id, c.source_system, c.event_subtype,
+                c.event_time.slice(5, 16).replace("T", " "),
+                c.original_identifiers.map(i => `${i.type}/${i.value}`).join(", "),
+                c.resolved_zids.map(z => z.is_placeholder ? `${z.zid} (placeholder)` : z.zid).join(", "),
+                c.conversion_value ? fmtUsd(c.conversion_value) : "—",
+              ])}
+            />
+          </div>
+        )}
+        {tab === "audience_lineage" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used to project attribution back into the customer's own ID space — for any audience built from customer-supplied identifiers, this is how the engine returns measurement keyed on those original IDs instead of on ZID.</div>
+            <Tbl
+              headers={["lineage_id", "audience_id", "customer_supplied_id", "type", "mapping_path", "resolved_zids"]}
+              rows={AUDIENCE_LINEAGE.map(l => [l.lineage_id, l.audience_id.replace("aud_",""), l.customer_supplied_id, l.customer_id_type, l.mapping_path.join(" / "), l.resolved_zids.join(", ")])}
+            />
+          </div>
+        )}
+        {tab === "profile_lineage" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used to roll attribution up to the ZMP profile (BSIN) level — the temporal map lets the engine pick the right ZID set for each event's timestamp even as profile clusters evolve mid-window.</div>
+            <Tbl
+              headers={["bsin", "resolved_zids", "effective_from", "effective_to"]}
+              rows={PROFILE_LINEAGE.map(p => [p.bsin, p.resolved_zids.join(", "), p.effective_from, p.effective_to ?? "(current)"])}
+            />
+          </div>
+        )}
+        {tab === "audit_trail" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did.</div>
+            <Tbl
+              headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at"]}
+              rows={AUDIT_TRAIL.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at.slice(0,16).replace("T"," ")])}
+            />
+          </div>
+        )}
+        {tab === "queries" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec">Used to compose attribution end-to-end against the fabric — these are the joins each attribution service runs (or generates) for any campaign.</div>
+            <div className="grid queries" style={{ gap: 16 }}>
+              <div className="col" style={{ gap: 6 }}>
+                {QUERIES.map((q, i) => (
+                  <Pill key={q.name} active={i===qi} onClick={() => setQi(i)}>{q.name}</Pill>
+                ))}
+              </div>
+              <Card title={QUERIES[qi].name}>
+                <div className="col" style={{ gap: 10 }}>
+                  <div className="t-sec">{QUERIES[qi].description}</div>
+                  <pre className="sql">{QUERIES[qi].sql}</pre>
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN APP
+// ============================================================================
+function App() {
+  const [model, setModel]       = useState("last_touch");
+  const [grouping, setGrouping] = useState("zid");
+  const [hhTypes, setHhTypes]   = useState(["ip", "ctv", "pa"]);
+  const [viewMode, setViewMode] = useState("both");
+  const [waterfall, setWaterfall] = useState(DEFAULT_WATERFALL);
+
+  const credKey = modelKey(model);
+  const channelData = CHANNELS.map(c => ({
+    name: c.name,
+    credited: c[credKey],
+    incremental: c.incremental_conversions,
+    spend: c.spend,
+    impressions: c.impressions,
+  }));
+  const insights = athenaInsights(model, grouping, viewMode);
+
+  return (
+    <div className="app">
+      <Sidebar />
+      <main className="main">
+        <TopBar />
+        <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
+          {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
+        </div>
+
+        <div className="col" style={{ gap: 20 }}>
+          <Controls model={model} setModel={setModel}
+            grouping={grouping} setGrouping={setGrouping}
+            hhTypes={hhTypes} setHhTypes={setHhTypes}
+            viewMode={viewMode} setViewMode={setViewMode} />
+          <KpiStrip viewMode={viewMode} />
+          <Diagnostics grouping={grouping} />
+          <AthenaCard insights={insights} />
+          {(viewMode === "mta" || viewMode === "both") && (
+            <MtaSection model={model} channelData={channelData} grouping={grouping} />
+          )}
+          {(viewMode === "inc" || viewMode === "both") && (
+            <IncrementalitySection channelData={channelData} />
+          )}
+          {(viewMode === "inc" || viewMode === "both") && (
+            <StratifiedDesignSection />
+          )}
+          {viewMode === "both" && (
+            <ModelVsCausality channelData={channelData} />
+          )}
+          <AudiencesAndWaterfall waterfall={waterfall} setWaterfall={setWaterfall} />
+          <DataInspector />
+          <FeatureEnhancementsSection />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error("React render error:", err, info); }
+  render() {
+    if (this.state.err) {
+      return <div style={{ padding: 24, background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca", borderRadius: 8, margin: 24 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>App render error</div>
+        <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{String(this.state.err && this.state.err.stack || this.state.err)}</pre>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
+try {
+  ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);
+} catch (err) {
+  const el = document.getElementById("boot-error");
+  el.style.display = "block";
+  el.textContent = "App boot error: " + (err && err.message || err);
+  console.error(err);
+}
+</script>
+</body>
+</html>
