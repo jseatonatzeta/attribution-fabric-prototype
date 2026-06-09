@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <title>Zeta Attribution — Identity Fabric Prototype</title>
-<meta name="viewport" content="width=1280, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
 :root {
   --bg-page: #f5f6f8;
@@ -40,27 +40,11 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif; font-size: 14px; line-height: 1.45; }
-.app { display: flex; min-height: 100vh; }
 
-/* sidebar */
-.sidebar { width: 220px; background: var(--bg-sidebar); color: var(--text-inverse); padding: 16px 0; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
-.sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 4px 18px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 10px; }
-.sidebar .brand .logo { width: 22px; height: 22px; border-radius: 5px; background: linear-gradient(135deg, #5b6bff, #8b5cf6); display: grid; place-items: center; font-weight: 700; font-size: 12px; color: white; }
-.sidebar .brand .name { font-weight: 700; letter-spacing: 0.06em; font-size: 13px; }
-.sidebar .brand .tag { font-size: 10px; color: rgba(255,255,255,0.6); }
-.sidebar nav { display: flex; flex-direction: column; }
-.sidebar nav a { color: rgba(255,255,255,0.75); padding: 8px 18px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 2px solid transparent; }
-.sidebar nav a:hover { color: white; background: rgba(255,255,255,0.04); }
-.sidebar nav a.active { color: white; background: rgba(37,99,235,0.18); border-left-color: var(--accent); font-weight: 600; }
-.sidebar .account { margin-top: auto; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.08); }
-.sidebar .account .label { font-size: 11px; color: rgba(255,255,255,0.55); }
-.sidebar .account .name { font-size: 12px; font-weight: 600; color: white; }
-.sidebar .account .slug { font-size: 11px; color: rgba(255,255,255,0.55); }
-
-/* main */
-.main { flex: 1; padding: 24px 28px 56px; min-width: 0; max-width: 1440px; }
-.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.topbar h1 { font-size: 24px; font-weight: 700; margin: 0; }
+/* main — single centered column optimized for ~800px */
+.main { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px 20px 56px; min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.topbar h1 { font-size: 22px; font-weight: 700; margin: 0; }
 .topbar .meta { color: var(--text-secondary); }
 .spacer { flex: 1; }
 .btn { background: var(--accent); color: white; border: 0; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -87,18 +71,25 @@ html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--tex
 .card-body.tight { padding: 12px; }
 .card-body.flush { padding: 0; }
 
-/* layouts */
-.grid { display: grid; gap: 16px; }
+/* layouts — at ~800px we keep two-column where it works (cols-2 and the labeled grids)
+   and let stat strips (cols-3 through cols-6) wrap on their own via auto-fit. */
+.grid { display: grid; gap: 12px; }
 .grid > * { min-width: 0; }
-.grid.cols-2 { grid-template-columns: 1fr 1fr; }
-.grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.grid.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.grid.mta { grid-template-columns: minmax(0, 3fr) minmax(0, 4fr); }
+.grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.grid.cols-5 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.grid.cols-6 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.grid.mta    { grid-template-columns: minmax(0, 3fr) minmax(0, 4fr); }
 .grid.aud-wf { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
-.grid.inc { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
-.grid.queries { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.grid.inc    { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.grid.queries{ grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+
+/* below ~720px (the labeled two-column grids get cramped), collapse them to single column */
+@media (max-width: 720px) {
+  .grid.mta, .grid.aud-wf, .grid.inc, .grid.queries { grid-template-columns: 1fr; }
+  .grid.cols-2 { grid-template-columns: 1fr; }
+}
 .row { display: flex; align-items: center; gap: 8px; }
 .row.wrap { flex-wrap: wrap; }
 .col { display: flex; flex-direction: column; gap: 8px; }
@@ -816,31 +807,6 @@ function Tbl({ headers, rows, columnAlign, rowTone }) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-// ============================================================================
-// SIDEBAR
-// ============================================================================
-function Sidebar() {
-  const navItems = ["Athena", "Live Marketer", "Campaigns", "Experiences", "Audiences", "Content", "Analytics", "Settings"];
-  return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="logo">Z</div>
-        <div><div className="name">ZETA</div><div className="tag">MOBILE</div></div>
-      </div>
-      <nav>
-        {navItems.map(n => (
-          <a key={n} className={n === "Analytics" ? "active" : ""}>{n}</a>
-        ))}
-      </nav>
-      <div className="account">
-        <div className="label">ACCOUNT</div>
-        <div className="name">{ACCOUNT}</div>
-        <div className="slug">zeta-luxury-hotel-collection</div>
-      </div>
-    </aside>
   );
 }
 
@@ -1661,13 +1627,11 @@ function App() {
   const insights = athenaInsights(model, grouping, viewMode);
 
   return (
-    <div className="app">
-      <Sidebar />
-      <main className="main">
-        <TopBar />
-        <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
-          {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
-        </div>
+    <main className="main">
+      <TopBar />
+      <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
+        {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
+      </div>
 
         <div className="col" style={{ gap: 20 }}>
           <Controls model={model} setModel={setModel}
@@ -1693,8 +1657,7 @@ function App() {
           <DataInspector />
           <FeatureEnhancementsSection />
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 
