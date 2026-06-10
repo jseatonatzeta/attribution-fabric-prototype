@@ -78,8 +78,11 @@ html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--tex
 .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.grid.cols-5 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.grid.cols-6 { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+/* cols-5 and cols-6 are sized to fit on a single row inside the 760px-usable
+   .main container (800px max-width minus 20px padding each side). 5×135 + 4×12 = 723px;
+   6×112 + 5×12 = 732px. Both stay under 760px so all cards land in one row. */
+.grid.cols-5 { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
+.grid.cols-6 { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); }
 .grid.mta    { grid-template-columns: minmax(0, 3fr) minmax(0, 4fr); }
 .grid.aud-wf { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
 .grid.inc    { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
@@ -97,10 +100,18 @@ html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--tex
 
 /* KPI stats */
 .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
-.stat .v { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.stat .v { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat .v.tone-success { color: var(--success); }
 .stat .v.tone-warning { color: var(--warning); }
 .stat .l { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+/* Scoped overrides for narrow grids — tighten padding and shrink the value font
+   just enough that the largest displayed number ("14,213,926") fits without
+   horizontal overflow. cols-6 cards are ~117px wide at 800px viewport so they
+   need more aggressive trimming than cols-5 (~142px). */
+.grid.cols-5 .stat { padding: 12px 12px; }
+.grid.cols-5 .stat .v { font-size: 20px; }
+.grid.cols-6 .stat { padding: 12px 10px; }
+.grid.cols-6 .stat .v { font-size: 18px; }
 
 /* callout */
 .callout { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; }
