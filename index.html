@@ -875,14 +875,12 @@ function Tbl({ headers, rows, columnAlign, rowTone }) {
 // ============================================================================
 // TOP BAR
 // ============================================================================
-function TopBar({ onExpandAll, onCollapseAll }) {
+function TopBar() {
   return (
     <div className="topbar">
       <h1>Attribution</h1>
       <Pill tone="info"><span className="dot"></span>Athena assistant on</Pill>
       <div className="spacer"></div>
-      <Pill onClick={onExpandAll}>Expand all</Pill>
-      <Pill onClick={onCollapseAll}>Collapse all</Pill>
       <Pill>Last 30 days</Pill>
       <Pill>Attribution window: 30d</Pill>
     </div>
@@ -1709,7 +1707,7 @@ function App() {
   return (
     <main className="main">
       <CollapseBroadcastContext.Provider value={collapseBroadcast}>
-        <TopBar onExpandAll={expandAll} onCollapseAll={collapseAll} />
+        <TopBar />
         <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
           {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
         </div>
@@ -1721,6 +1719,11 @@ function App() {
             viewMode={viewMode} setViewMode={setViewMode} />
           <KpiStrip viewMode={viewMode} />
           <Diagnostics grouping={grouping} />
+          <div className="row" style={{ justifyContent: "flex-end", gap: 6, marginBottom: -8 }}>
+            <span className="t-small t-sec">All sections:</span>
+            <Pill onClick={expandAll}>Expand all</Pill>
+            <Pill onClick={collapseAll}>Collapse all</Pill>
+          </div>
           <AthenaCard insights={insights} />
           {(viewMode === "mta" || viewMode === "both") && (
             <MtaSection model={model} channelData={channelData} grouping={grouping} />
