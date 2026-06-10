@@ -1641,7 +1641,7 @@ function DataInspector() {
         )}
         {tab === "audit_trail" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did. <span className="t-mono">effective_at</span> is the date the transition was emitted by the daily SuperGraph rebuild; intraday transition reversals (A→B→A in one batch day) and intermediate hops (A→B→C collapsed to A→C) are not captured by the daily-diff emission path, which is an acceptable trade-off because attribution windows are day-grained.</div>
+            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did.</div>
             <Tbl
               headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at", "transition_reason"]}
               rows={AUDIT_TRAIL.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at, a.transition_reason])}
