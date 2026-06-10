@@ -42,7 +42,14 @@
 html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif; font-size: 14px; line-height: 1.45; }
 
 /* main — single centered column optimized for ~800px */
-.main { width: 100%; max-width: 760px; margin: 0 auto; padding: 20px 20px 56px; min-width: 0; }
+.main {
+  width: 100%; max-width: 760px; margin: 0 auto;
+  padding: 20px 20px 56px; min-width: 0;
+  /* Prevent absolutely-positioned descendants (notably the 300px-wide
+     .info-icon::after tooltip near the right edge) from creating a
+     horizontal page scroll inside narrow embeds. */
+  overflow-x: clip;
+}
 .topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .topbar h1 { font-size: 22px; font-weight: 700; margin: 0; }
 .topbar .meta { color: var(--text-secondary); }
@@ -71,8 +78,10 @@ html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--tex
 .card-body.tight { padding: 12px; }
 .card-body.flush { padding: 0; }
 
-/* layouts — at ~760px we keep two-column where it works (cols-2 and the labeled grids)
-   and let stat strips (cols-3 through cols-6) wrap on their own via auto-fit. */
+/* layouts — at the compact ~760px width (Confluence iframe) we keep two-column where it
+   works (cols-2 and the labeled grids) and let stat strips (cols-3 through cols-6) wrap
+   on their own via auto-fit. The wide-mode media query below grows .main; auto-fit + 1fr
+   then stretches the cards into the extra space without needing per-grid overrides. */
 .grid { display: grid; gap: 12px; }
 .grid > * { min-width: 0; }
 .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -112,6 +121,21 @@ html, body { margin: 0; padding: 0; background: var(--bg-page); color: var(--tex
 .grid.cols-5 .stat .v { font-size: 20px; }
 .grid.cols-6 .stat { padding: 12px 10px; }
 .grid.cols-6 .stat .v { font-size: 18px; }
+
+/* Responsive: when viewport has room beyond the Confluence-iframe target,
+   grow .main back toward a comfortable desktop width. Single jump at 900px
+   keeps the iframe (≤760px viewport) pinned to its compact layout while
+   any desktop browser session opens up to a more presentable 1100px. */
+@media (min-width: 900px) {
+  .main { max-width: 1100px; padding: 28px 28px 64px; }
+}
+/* Once the cards have enough inner width to comfortably fit the largest
+   stat value ("14,213,926") at full 22px, release the scoped tight
+   overrides so KPI/diagnostic strips read at their original visual weight. */
+@media (min-width: 1100px) {
+  .grid.cols-5 .stat,    .grid.cols-6 .stat    { padding: 14px 16px; }
+  .grid.cols-5 .stat .v, .grid.cols-6 .stat .v { font-size: 22px; }
+}
 
 /* callout */
 .callout { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); background: white; }
