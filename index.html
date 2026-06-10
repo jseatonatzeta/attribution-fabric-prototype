@@ -321,10 +321,13 @@ const IDENTITY_EVENTS = [
   { event_id: "id_007", event_subtype: "identifier_removed",  event_time: "2026-05-22T18:30:00Z", bsin: "bsin_002405", identifier: { type: "ph",     value: "ph/+1-555…7788" }, resolved_zids: ["zid_88451"],                                       waterfall_config_id: "wf_account_default_v3" },
 ];
 
+// SuperGraph audit trail rows. effective_at is day-grained (date partition) — production emits
+// these from a daily diff of the membership snapshot, not as an intraday event stream. Attribution
+// windows are day-grained anyway, so the loss of intraday precision is acceptable.
 const AUDIT_TRAIL = [
-  { identifier_type: "cs", identifier_value: "cs_abc…017", from_zid: "zid_88341",            to_zid: "zid_88342", effective_at: "2026-05-14T03:00:00Z", graph_snapshot_version: "sg_2026-05-14", transition_reason: "cluster_merge" },
-  { identifier_type: "mm", identifier_value: "mm_4f7…ab2", from_zid: null,                   to_zid: "zid_88207", effective_at: "2026-05-21T03:00:00Z", graph_snapshot_version: "sg_2026-05-21", transition_reason: "new_identifier" },
-  { identifier_type: "cz", identifier_value: "cz_9a1…d44", from_zid: "zid_PLACEHOLDER_001",  to_zid: "zid_88450", effective_at: "2026-05-28T03:00:00Z", graph_snapshot_version: "sg_2026-05-28", transition_reason: "new_identifier" },
+  { identifier_type: "cs", identifier_value: "cs_abc…017", from_zid: "zid_88341",            to_zid: "zid_88342", effective_at: "2026-05-14", transition_reason: "cluster_merge" },
+  { identifier_type: "mm", identifier_value: "mm_4f7…ab2", from_zid: null,                   to_zid: "zid_88207", effective_at: "2026-05-21", transition_reason: "new_identifier" },
+  { identifier_type: "cz", identifier_value: "cz_9a1…d44", from_zid: "zid_PLACEHOLDER_001",  to_zid: "zid_88450", effective_at: "2026-05-28", transition_reason: "new_identifier" },
 ];
 
 // EEL exposures: impressions only (incl. ghost_impression for incrementality). propensity_score / propensity_model_id populated only for ZX-style stratified events.
@@ -548,19 +551,17 @@ FROM cz JOIN ez
  AND ez.exp_time <= cz.conv_time
  AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
   { name: "4. Second-pass audit-trail walk (unmatched conversions)",
-    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the audit trail.",
+    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the audit trail. effective_at is day-grained (SuperGraph's daily diff partition), so the join window is compared at date precision.",
     sql: `WITH unmatched AS (
-  SELECT conv_id, original_identifiers FROM ...   /* see step 4 */
+  SELECT conv_id, conv_zid, conv_time FROM ...   /* see step 3 */
 )
 SELECT u.conv_id,
        at.from_zid AS extended_zid,
        at.effective_at
-FROM unmatched u,
-     LATERAL FLATTEN(input => u.original_identifiers) ident
+FROM unmatched u
 JOIN supergraph.audit_trail at
-  ON at.identifier_type  = ident.value:type::string
- AND at.identifier_value = ident.value:value::string
- AND at.effective_at BETWEEN :win_start AND :conv_time;
+  ON at.to_zid       = u.conv_zid
+ AND at.effective_at BETWEEN DATE(:win_start) AND DATE(u.conv_time);
 -- then JOIN exposure_events again on extended_zid` },
   { name: "5. Apply attribution model → per-ZID credit table",
     description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
@@ -1640,10 +1641,10 @@ function DataInspector() {
         )}
         {tab === "audit_trail" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did.</div>
+            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did. <span className="t-mono">effective_at</span> is the date the transition was emitted by the daily SuperGraph rebuild; intraday transition reversals (A→B→A in one batch day) and intermediate hops (A→B→C collapsed to A→C) are not captured by the daily-diff emission path, which is an acceptable trade-off because attribution windows are day-grained.</div>
             <Tbl
-              headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at"]}
-              rows={AUDIT_TRAIL.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at.slice(0,16).replace("T"," ")])}
+              headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at", "transition_reason"]}
+              rows={AUDIT_TRAIL.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at, a.transition_reason])}
             />
           </div>
         )}
