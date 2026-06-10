@@ -257,7 +257,13 @@ window.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script type="text/babel" data-presets="react">
-const { useState, useMemo, useRef, useEffect } = React;
+const { useState, useMemo, useRef, useEffect, useContext } = React;
+
+// Broadcast channel for the top-bar "Expand all" / "Collapse all" pills. Each click
+// publishes a fresh {open, key} object; collapsible components subscribe via useContext
+// and apply the new open state when key changes. Individual sections retain their own
+// open state at all other times, so per-section toggling continues to work unaffected.
+const CollapseBroadcastContext = React.createContext(null);
 
 // ============================================================================
 // SAMPLE DATA (mirrors the canvas + the two design docs)
@@ -819,6 +825,8 @@ function Card({ title, info, right, children, flush }) {
 }
 function CollapsibleCard({ title, right, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
+  const broadcast = useContext(CollapseBroadcastContext);
+  useEffect(() => { if (broadcast) setOpen(broadcast.open); }, [broadcast?.key]);
   return (
     <div className="card">
       <div className="card-header collapse-head" onClick={() => setOpen(o => !o)}>
@@ -831,6 +839,8 @@ function CollapsibleCard({ title, right, defaultOpen = false, children }) {
 }
 function CollapsibleSection({ title, info, badges, meta, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
+  const broadcast = useContext(CollapseBroadcastContext);
+  useEffect(() => { if (broadcast) setOpen(broadcast.open); }, [broadcast?.key]);
   return (
     <div className="section">
       <div className="row collapse-head" onClick={() => setOpen(o => !o)} style={{ cursor: "pointer", userSelect: "none" }}>
@@ -865,12 +875,14 @@ function Tbl({ headers, rows, columnAlign, rowTone }) {
 // ============================================================================
 // TOP BAR
 // ============================================================================
-function TopBar() {
+function TopBar({ onExpandAll, onCollapseAll }) {
   return (
     <div className="topbar">
       <h1>Attribution</h1>
       <Pill tone="info"><span className="dot"></span>Athena assistant on</Pill>
       <div className="spacer"></div>
+      <Pill onClick={onExpandAll}>Expand all</Pill>
+      <Pill onClick={onCollapseAll}>Collapse all</Pill>
       <Pill>Last 30 days</Pill>
       <Pill>Attribution window: 30d</Pill>
     </div>
@@ -1680,6 +1692,9 @@ function App() {
   const [hhTypes, setHhTypes]   = useState(["ip", "ctv", "pa"]);
   const [viewMode, setViewMode] = useState("both");
   const [waterfall, setWaterfall] = useState(DEFAULT_WATERFALL);
+  const [collapseBroadcast, setCollapseBroadcast] = useState(null);
+  const expandAll   = () => setCollapseBroadcast({ open: true,  key: Date.now() });
+  const collapseAll = () => setCollapseBroadcast({ open: false, key: Date.now() });
 
   const credKey = modelKey(model);
   const channelData = CHANNELS.map(c => ({
@@ -1693,10 +1708,11 @@ function App() {
 
   return (
     <main className="main">
-      <TopBar />
-      <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
-        {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
-      </div>
+      <CollapseBroadcastContext.Provider value={collapseBroadcast}>
+        <TopBar onExpandAll={expandAll} onCollapseAll={collapseAll} />
+        <div className="t-sec" style={{ marginTop: -10, marginBottom: 20 }}>
+          {ACCOUNT} · <span className="t-semi">{CAMPAIGN.name}</span> · {CAMPAIGN.window}
+        </div>
 
         <div className="col" style={{ gap: 20 }}>
           <Controls model={model} setModel={setModel}
@@ -1722,6 +1738,7 @@ function App() {
           <DataInspector />
           <FeatureEnhancementsSection />
         </div>
+      </CollapseBroadcastContext.Provider>
     </main>
   );
 }
