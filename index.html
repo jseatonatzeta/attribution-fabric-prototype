@@ -304,6 +304,7 @@ const AUDIENCE_LINEAGE = [
   { lineage_id: "lin_002", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/1b27…8df", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88207"],            graph_snapshot_version: "sg_2026-05-12" },
   { lineage_id: "lin_003", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/7e51…c02", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88341","zid_88342","zid_88343"], graph_snapshot_version: "sg_2026-05-12" },
   { lineage_id: "lin_004", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/4a8c…b19", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88450"],            graph_snapshot_version: "sg_2026-05-12" },
+  { lineage_id: "lin_005", audience_id: "aud_past_guests_loyalty", customer_supplied_id: "pa/3d92…fff", customer_id_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], resolved_zids: ["zid_88500"],            graph_snapshot_version: "sg_2026-05-12" },
 ];
 
 // Identity events: emitted by People Service (inside ZMP) and ingested into EEL like any other event.
@@ -327,16 +328,18 @@ const AUDIT_TRAIL = [
 ];
 
 // EEL exposures: impressions only (incl. ghost_impression for incrementality). propensity_score / propensity_model_id populated only for ZX-style stratified events.
+// lineage_enrichment is stamped by EEL at ingest time by calling the Lineage Service for any exposure whose audience has lineage_present:true; null otherwise.
+// This means the attribution engine never has to join back to the lineage store — the customer-supplied ID and waterfall path are already on the row.
 const EEL_EXPOSURES = [
-  { event_id: "ex_001", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T09:14:22Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…001"},{type:"ip",value:"73.21.x.y"}],  resolved_zids: [{zid:"zid_88102",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_005", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-16T20:33:10Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_001",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_006", source_system: "liveintent", event_subtype: "impression",       channel: "Inbox",   event_time: "2026-05-17T08:22:44Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_aaa…044"},{type:"lidid",value:"li_ff8…200"}], resolved_zids: [{zid:"zid_88207",source_identifier:"em_md5",is_placeholder:false}], cost: 0.011, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_007", source_system: "dsp",        event_subtype: "ghost_impression", channel: "Display", event_time: "2026-05-15T13:01:55Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "ghost",  original_identifiers: [{type:"cs",value:"cs_abc…077"},{type:"ip",value:"98.41.x.y"}],  resolved_zids: [{zid:"zid_88500",source_identifier:"cs",is_placeholder:false}], cost: 0,     propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_008", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T18:55:12Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…017"},{type:"ip",value:"207.55.x.y"}], resolved_zids: [{zid:"zid_88341",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_009", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-20T15:11:02Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_def…102"},{type:"ip",value:"65.18.x.y"}],  resolved_zids: [{zid:"zid_88207",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_010", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-22T21:14:08Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_002",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null },
-  { event_id: "ex_011", source_system: "userver",    event_subtype: "impression",       channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_trt",            exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_zx1…001"}],                       resolved_zids: [{zid:"zid_88102",source_identifier:"em_md5",is_placeholder:false}], cost: 0.010, propensity_score: 0.851, propensity_model_id: "zx_lux_travel_v8" },
-  { event_id: "ex_012", source_system: "userver",    event_subtype: "ghost_impression", channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_ctl",            exposure_arm: "ghost",  original_identifiers: [{type:"em_md5",value:"em_md5_zx1…044"}],                       resolved_zids: [{zid:"zid_88450",source_identifier:"em_md5",is_placeholder:false}], cost: 0,     propensity_score: 0.850, propensity_model_id: "zx_lux_travel_v8" },
+  { event_id: "ex_001", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T09:14:22Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…001"},{type:"ip",value:"73.21.x.y"}],  resolved_zids: [{zid:"zid_88102",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null, lineage_enrichment: { original_identifier: "pa/9c4f…a31", original_identifier_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], waterfall_config_id: "wf_account_default_v3", lineage_id: "lin_001" } },
+  { event_id: "ex_005", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-16T20:33:10Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_001",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null, lineage_enrichment: null },
+  { event_id: "ex_006", source_system: "liveintent", event_subtype: "impression",       channel: "Inbox",   event_time: "2026-05-17T08:22:44Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_aaa…044"},{type:"lidid",value:"li_ff8…200"}], resolved_zids: [{zid:"zid_88207",source_identifier:"em_md5",is_placeholder:false}], cost: 0.011, propensity_score: null,  propensity_model_id: null, lineage_enrichment: null },
+  { event_id: "ex_007", source_system: "dsp",        event_subtype: "ghost_impression", channel: "Display", event_time: "2026-05-15T13:01:55Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "ghost",  original_identifiers: [{type:"cs",value:"cs_abc…077"},{type:"ip",value:"98.41.x.y"}],  resolved_zids: [{zid:"zid_88500",source_identifier:"cs",is_placeholder:false}], cost: 0,     propensity_score: null,  propensity_model_id: null, lineage_enrichment: { original_identifier: "pa/3d92…fff", original_identifier_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], waterfall_config_id: "wf_account_default_v3", lineage_id: "lin_005" } },
+  { event_id: "ex_008", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T18:55:12Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…017"},{type:"ip",value:"207.55.x.y"}], resolved_zids: [{zid:"zid_88341",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null, lineage_enrichment: { original_identifier: "pa/7e51…c02", original_identifier_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], waterfall_config_id: "wf_account_default_v3", lineage_id: "lin_003" } },
+  { event_id: "ex_009", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-20T15:11:02Z", audience_id: "aud_high_intent_travelers", exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_def…102"},{type:"ip",value:"65.18.x.y"}],  resolved_zids: [{zid:"zid_88207",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null, lineage_enrichment: null },
+  { event_id: "ex_010", source_system: "dsp",        event_subtype: "impression",       channel: "CTV",     event_time: "2026-05-22T21:14:08Z", audience_id: "aud_ctv_lookalike",         exposure_arm: "served", original_identifiers: [{type:"ctv",value:"ctv_dev_4421"},{type:"ip",value:"73.21.x.y"}], resolved_zids: [{zid:"zid_PLACEHOLDER_002",source_identifier:"placeholder",is_placeholder:true}], cost: 0.039, propensity_score: null,  propensity_model_id: null, lineage_enrichment: null },
+  { event_id: "ex_011", source_system: "userver",    event_subtype: "impression",       channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_trt",            exposure_arm: "served", original_identifiers: [{type:"em_md5",value:"em_md5_zx1…001"}],                       resolved_zids: [{zid:"zid_88102",source_identifier:"em_md5",is_placeholder:false}], cost: 0.010, propensity_score: 0.851, propensity_model_id: "zx_lux_travel_v8", lineage_enrichment: null },
+  { event_id: "ex_012", source_system: "userver",    event_subtype: "ghost_impression", channel: "Email",   event_time: "2026-05-18T11:02:31Z", audience_id: "aud_zx_d10_ctl",            exposure_arm: "ghost",  original_identifiers: [{type:"em_md5",value:"em_md5_zx1…044"}],                       resolved_zids: [{zid:"zid_88450",source_identifier:"em_md5",is_placeholder:false}], cost: 0,     propensity_score: 0.850, propensity_model_id: "zx_lux_travel_v8", lineage_enrichment: null },
 ];
 
 const EEL_CONVERSIONS = [
@@ -500,27 +503,32 @@ function athenaInsights(model, grouping, viewMode) {
 }
 
 const QUERIES = [
-  { name: "1. Resolve campaign → audiences → lineage + waterfall",
-    description: "Pull the audience lineage + the waterfall config in effect for each source audience.",
-    sql: `SELECT
-  c.campaign_id, c.account_id,
-  a.audience_id, a.name AS audience_name,
-  l.lineage_id, l.customer_supplied_id, l.customer_id_type,
-  l.resolved_zids, l.mapping_path,
-  w.waterfall_config_id, w.ordered_id_types
-FROM campaigns           c
-JOIN campaign_audiences  ca USING (campaign_id)
-JOIN audiences           a  USING (audience_id)
-LEFT JOIN audience_lineage    l  USING (audience_id)
-LEFT JOIN waterfall_config    w  ON w.waterfall_config_id = l.waterfall_config_id
-WHERE c.campaign_id = :campaign_id
-  AND c.account_id  = :account_id;` },
+  { name: "1. EEL ingest enrichment — stamp lineage onto each exposure (run inside EEL, not by attribution)",
+    description: "Run by the EEL ingestion job, not by the attribution engine. For each incoming exposure, EEL looks up the source audience's lineage row whose resolved_zids overlap the exposure's resolved ZIDs, plus the waterfall config in effect, and writes both onto the exposure row as lineage_enrichment. After this, every downstream consumer reads original_identifier / mapping_path directly off the exposure — no further joins to the lineage store.",
+    sql: `INSERT INTO eel.exposure_events (
+  event_id, …, lineage_enrichment
+)
+SELECT
+  raw.event_id, …,
+  CASE WHEN l.lineage_id IS NULL THEN NULL ELSE OBJECT_CONSTRUCT(
+    'lineage_id',                l.lineage_id,
+    'original_identifier',       l.customer_supplied_id,
+    'original_identifier_type',  l.customer_id_type,
+    'mapping_path',              l.mapping_path,
+    'waterfall_config_id',       w.waterfall_config_id
+  ) END AS lineage_enrichment
+FROM raw_exposures raw
+JOIN audiences          a  ON a.audience_id = raw.audience_id
+LEFT JOIN audience_lineage   l  ON l.audience_id = a.audience_id
+                              AND ARRAYS_OVERLAP(l.resolved_zids, raw.resolved_zids[*]:zid)
+LEFT JOIN waterfall_config   w  ON w.waterfall_config_id = a.waterfall_config_id;` },
   { name: "2. Exposure events for the campaign window",
-    description: "EEL impressions (served + ghost), multi-ZID resolved, with arm and original identifiers preserved.",
+    description: "EEL impressions (served + ghost), multi-ZID resolved, with arm, original identifiers, and the lineage_enrichment object that EEL stamped at ingest. Once the engine has this it never has to call the lineage service again.",
     sql: `SELECT
   event_id, event_time, source_system, event_subtype,
   channel, audience_id, exposure_arm, experiment_id,
   original_identifiers, resolved_zids,
+  lineage_enrichment,                -- {original_identifier, mapping_path, waterfall_config_id, …}
   campaign_id, cost
 FROM eel.exposure_events
 WHERE account_id  = :account_id
@@ -620,17 +628,17 @@ FROM per_zid_credit c
 JOIN bsin_as_of    b
   ON ARRAYS_OVERLAP(ARRAY_CONSTRUCT(c.exp_zid), b.bsin_zids)
 GROUP BY b.bsin;` },
-  { name: "8. Project per-ZID credit → customer_supplied_id",
-    description: "Join through audience_lineage to render measurement in the customer's own ID space.",
-    sql: `SELECT l.customer_supplied_id, l.customer_id_type,
-       SUM(c.credited_count) AS credited_count,
-       SUM(c.credited_value) AS credited_value
-FROM per_zid_credit  c
-JOIN audience_lineage l
-  ON l.account_id  = :account_id
- AND l.audience_id = c.audience_id
- AND ARRAY_CONTAINS(c.exp_zid::variant, l.resolved_zids)
-GROUP BY l.customer_supplied_id, l.customer_id_type;` },
+  { name: "8. Project per-ZID credit → customer_supplied_id (no lineage join)",
+    description: "Lineage is already stamped onto each exposure row at EEL ingest (see Query #1), so the attribution engine reads it directly. The audience_lineage table doesn't appear in this query at all — exposures missing enrichment are simply the rows that fall through to ZID-only reporting.",
+    sql: `SELECT
+  e.lineage_enrichment:original_identifier::string      AS customer_supplied_id,
+  e.lineage_enrichment:original_identifier_type::string AS customer_id_type,
+  SUM(c.credited_count) AS credited_count,
+  SUM(c.credited_value) AS credited_value
+FROM per_zid_credit       c
+JOIN eel.exposure_events  e  ON e.event_id = c.exposure_event_id
+WHERE e.lineage_enrichment IS NOT NULL
+GROUP BY 1, 2;` },
   { name: "9. Household projection (dynamic, from observed identifiers)",
     description: "Group ZIDs that share any selected household identifier value (IP / CTV / postal) within the window.",
     sql: `WITH hh_ids AS (
@@ -1586,10 +1594,10 @@ function DataInspector() {
         </div>
         {tab === "exposures" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used as the candidate touchpoint set the attribution engine matches conversions back to — every ad impression delivered for the campaign, served and ghost alike. The propensity columns are populated only for events from stratified-design experiments (ZX-style decile randomization); they're null for everything else.</div>
+            <div className="t-small t-sec">Used as the candidate touchpoint set the attribution engine matches conversions back to — every ad impression delivered for the campaign, served and ghost alike. The propensity columns are populated only for events from stratified-design experiments (ZX-style decile randomization). The <span className="t-mono">lineage_enrichment</span> column is stamped by EEL at ingest by calling the Lineage Service for audiences built from customer-supplied IDs; once it's on the row, the attribution engine never needs to query the lineage store directly.</div>
             <Tbl
-              headers={["event_id", "source", "subtype", "channel", "time", "arm", "audience", "original_identifiers", "resolved_zids", "propensity_score", "propensity_model"]}
-              columnAlign={["left","left","left","left","left","left","left","left","left","right","left"]}
+              headers={["event_id", "source", "subtype", "channel", "time", "arm", "audience", "original_identifiers", "resolved_zids", "propensity_score", "propensity_model", "lineage_enrichment"]}
+              columnAlign={["left","left","left","left","left","left","left","left","left","right","left","left"]}
               rows={EEL_EXPOSURES.map(e => [
                 e.event_id, e.source_system, e.event_subtype, e.channel,
                 e.event_time.slice(5, 16).replace("T", " "), e.exposure_arm,
@@ -1598,6 +1606,9 @@ function DataInspector() {
                 e.resolved_zids.map(z => z.is_placeholder ? `${z.zid} (placeholder)` : z.zid).join(", "),
                 e.propensity_score == null ? "—" : e.propensity_score.toFixed(3),
                 e.propensity_model_id ?? "—",
+                e.lineage_enrichment
+                  ? `${e.lineage_enrichment.original_identifier} · ${e.lineage_enrichment.mapping_path.join("→")} · ${e.lineage_enrichment.lineage_id}`
+                  : "—",
               ])}
             />
           </div>
@@ -1620,7 +1631,7 @@ function DataInspector() {
         )}
         {tab === "audience_lineage" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used to project attribution back into the customer's own ID space — for any audience built from customer-supplied identifiers, this is how the engine returns measurement keyed on those original IDs instead of on ZID.</div>
+            <div className="t-small t-sec">Source-of-truth for audience-level identifier mapping. Consumed by EEL at ingest time to stamp <span className="t-mono">lineage_enrichment</span> onto each exposure row (see EEL · Exposures). The attribution engine never joins back to this table at query time — it just reads the stamped fields off the exposures. The four rows below seed the enrichment for any past-guests-loyalty exposure in this campaign.</div>
             <Tbl
               headers={["lineage_id", "audience_id", "customer_supplied_id", "type", "mapping_path", "resolved_zids"]}
               rows={AUDIENCE_LINEAGE.map(l => [l.lineage_id, l.audience_id.replace("aud_",""), l.customer_supplied_id, l.customer_id_type, l.mapping_path.join(" / "), l.resolved_zids.join(", ")])}
