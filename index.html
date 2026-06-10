@@ -327,13 +327,26 @@ const IDENTITY_EVENTS = [
   { event_id: "id_007", event_subtype: "identifier_removed",  event_time: "2026-05-22T18:30:00Z", bsin: "bsin_002405", identifier: { type: "ph",     value: "ph/+1-555…7788" }, resolved_zids: ["zid_88451"],                                       waterfall_config_id: "wf_account_default_v3" },
 ];
 
-// SuperGraph Transition Logs rows. effective_at is day-grained (date partition) — production
-// emits these from a daily diff of the membership snapshot, not as an intraday event stream.
-// Attribution windows are day-grained anyway, so the loss of intraday precision is acceptable.
+// SuperGraph Transition Logs — schema matches production's aggregated ZidTransitionMapping
+// (see Confluence "ZID Transition Mapping (aggregated)"). Three fields:
+//   zid         : the stale ZID (the lookup key)
+//   currentZid  : the current ZID after collapsing every downstream transition through to its end state
+//   staleDate   : the day `zid` first went stale; set once, never refreshed even when later
+//                 transitions update currentZid (so older stale entries keep their original date)
+// Chains are collapsed at write time: if A→B existed and today B→C, the table stores BOTH
+// (A, C, staleDateOfA) and (B, C, staleDateOfB). Consumers always get the final answer in one
+// hop — no recursive walk required. Rows have a finite TTL (drop after N days outside the
+// business window).
 const TRANSITION_LOGS = [
-  { identifier_type: "cs", identifier_value: "cs_abc…017", from_zid: "zid_88341",            to_zid: "zid_88342", effective_at: "2026-05-14", transition_reason: "cluster_merge" },
-  { identifier_type: "mm", identifier_value: "mm_4f7…ab2", from_zid: null,                   to_zid: "zid_88207", effective_at: "2026-05-21", transition_reason: "new_identifier" },
-  { identifier_type: "cz", identifier_value: "cz_9a1…d44", from_zid: "zid_PLACEHOLDER_001",  to_zid: "zid_88450", effective_at: "2026-05-28", transition_reason: "new_identifier" },
+  // Direct transition: cluster_merge happened on 2026-05-14, zid_88341 collapsed into zid_88342.
+  { zid: "zid_88341",            currentZid: "zid_88342", staleDate: "2026-05-14" },
+  // Chain-collapsed transition: zid_88100 originally went stale on 2026-04-15 when it merged
+  // into zid_88341. zid_88341 has since collapsed into zid_88342, so this row's currentZid
+  // was rewritten to zid_88342 — but staleDate is preserved as 2026-04-15.
+  { zid: "zid_88100",            currentZid: "zid_88342", staleDate: "2026-04-15" },
+  // Placeholder promotion: cz_9a1…d44 was originally written with a placeholder ZID;
+  // on 2026-05-28 SuperGraph promoted it to a real ZID, marking the placeholder stale.
+  { zid: "zid_PLACEHOLDER_001",  currentZid: "zid_88450", staleDate: "2026-05-28" },
 ];
 
 // EEL exposures: impressions only (incl. ghost_impression for incrementality). propensity_score / propensity_model_id populated only for ZX-style stratified events.
@@ -556,18 +569,18 @@ FROM cz JOIN ez
   ON cz.conv_zid = ez.exp_zid
  AND ez.exp_time <= cz.conv_time
  AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
-  { name: "4. Second-pass transition-log walk (unmatched conversions)",
-    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the SuperGraph Transition Logs. effective_at is day-grained (the daily diff partition), so the join window is compared at date precision.",
+  { name: "4. Second-pass transition-log lookup (unmatched conversions)",
+    description: "For conversions with no first-pass match, recover the predecessor stale ZIDs by looking them up in the aggregated ZidTransitionMapping. Because chains are collapsed at write time, a single equality join on currentZid returns every stale ZID that ever resolved to the conversion's ZID — no recursive walk needed. staleDate is day-grained and bounded by the attribution window.",
     sql: `WITH unmatched AS (
   SELECT conv_id, conv_zid, conv_time FROM ...   /* see step 3 */
 )
 SELECT u.conv_id,
-       tl.from_zid AS extended_zid,
-       tl.effective_at
+       m.zid       AS extended_zid,
+       m.staleDate
 FROM unmatched u
-JOIN supergraph.transition_logs tl
-  ON tl.to_zid       = u.conv_zid
- AND tl.effective_at BETWEEN DATE(:win_start) AND DATE(u.conv_time);
+JOIN supergraph.zid_transition_mapping m
+  ON m.currentZid = u.conv_zid
+ AND m.staleDate BETWEEN DATE(:win_start) AND DATE(u.conv_time);
 -- then JOIN exposure_events again on extended_zid` },
   { name: "5. Apply attribution model → per-ZID credit table",
     description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
@@ -1650,10 +1663,10 @@ function DataInspector() {
         )}
         {tab === "transition_logs" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks the transition logs to find the predecessor ZIDs that did.</div>
+            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine looks up the stale-ZID rows whose <span className="t-mono">currentZid</span> matches the conversion's ZID to recover the predecessor IDs. Production stores this as an aggregated <span className="t-mono">ZidTransitionMapping</span>: chains are collapsed at write time so a single hop returns the final answer (no recursion needed); <span className="t-mono">staleDate</span> is set once when each <span className="t-mono">zid</span> first goes stale and never refreshed; rows have a finite TTL.</div>
             <Tbl
-              headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at", "transition_reason"]}
-              rows={TRANSITION_LOGS.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at, a.transition_reason])}
+              headers={["zid (stale)", "currentZid", "staleDate"]}
+              rows={TRANSITION_LOGS.map(t => [t.zid, t.currentZid, t.staleDate])}
             />
           </div>
         )}
