@@ -327,6 +327,32 @@ const IDENTITY_EVENTS = [
   { event_id: "id_007", event_subtype: "identifier_removed",  event_time: "2026-05-22T18:30:00Z", bsin: "bsin_002405", identifier: { type: "ph",     value: "ph/+1-555…7788" }, resolved_zids: ["zid_88451"],                                       waterfall_config_id: "wf_account_default_v3" },
 ];
 
+// SuperGraph current snapshot — represents the current (identifier → ZID) mapping
+// read by the second-pass forward identifier resolution path. Production stores this
+// as zig_zid_membership, partitioned by dt; the latest partition is "current". Most
+// identifiers stay on the same ZID for long stretches; the rows below cover every
+// identifier that appears on the campaign's exposures, with two interesting cases
+// (cs_abc…017 moved by cluster merge; ctv_dev_4421 promoted from placeholder).
+const SUPERGRAPH_SNAPSHOT = [
+  // Stable — same ZID since first attach.
+  { identifier_type: "cs",     identifier_value: "cs_abc…001",    current_zid: "zid_88102", last_modified_dt: "2026-04-03" },
+  { identifier_type: "em_md5", identifier_value: "em_md5_aaa…044", current_zid: "zid_88207", last_modified_dt: "2026-04-01" },
+  { identifier_type: "cs",     identifier_value: "cs_abc…077",    current_zid: "zid_88500", last_modified_dt: "2026-04-22" },
+  { identifier_type: "cs",     identifier_value: "cs_def…102",    current_zid: "zid_88207", last_modified_dt: "2026-04-30" },
+  { identifier_type: "em_md5", identifier_value: "em_md5_zx1…001", current_zid: "zid_88102", last_modified_dt: "2026-05-02" },
+  { identifier_type: "em_md5", identifier_value: "em_md5_zx1…044", current_zid: "zid_88450", last_modified_dt: "2026-05-02" },
+  // MOVED — at exposure time cs_abc…017 → zid_88341 (see ex_008). On 2026-05-14
+  // zid_88341 collapsed into zid_88342, so cs_abc…017 now resolves to zid_88342.
+  // Forward identifier resolution catches ex_008 ↔ cv_006 here — no transition-log
+  // lookup needed (this is the *primary* second-pass path).
+  { identifier_type: "cs",     identifier_value: "cs_abc…017",    current_zid: "zid_88342", last_modified_dt: "2026-05-14" },
+  // PROMOTED — at exposure time SuperGraph had no node for ctv_dev_4421, so ex_005
+  // was written with a placeholder ZID. The identifier was later clustered into
+  // zid_88102, so forward identifier resolution adds zid_88102 to ex_005's
+  // effective ZID set, pulling ex_005 into cv_001's touchpoint set.
+  { identifier_type: "ctv",    identifier_value: "ctv_dev_4421",  current_zid: "zid_88102", last_modified_dt: "2026-06-01" },
+];
+
 // SuperGraph Transition Logs — schema matches production's aggregated ZidTransitionMapping
 // (see Confluence "ZID Transition Mapping (aggregated)"). Three fields:
 //   zid         : the stale ZID (the lookup key)
@@ -337,15 +363,24 @@ const IDENTITY_EVENTS = [
 // (A, C, staleDateOfA) and (B, C, staleDateOfB). Consumers always get the final answer in one
 // hop — no recursive walk required. Rows have a finite TTL (drop after N days outside the
 // business window).
+//
+// In the second-pass design this is the SAFETY NET. Forward identifier resolution against
+// SUPERGRAPH_SNAPSHOT is the primary path; this table only earns its keep when an exposure's
+// identifier has since been deactivated — the identifier is gone from the snapshot, but the
+// original resolved_zid on the exposure row still walks forward to its currentZid here.
 const TRANSITION_LOGS = [
   // Direct transition: cluster_merge happened on 2026-05-14, zid_88341 collapsed into zid_88342.
+  // Redundant with the cs_abc…017 row in SUPERGRAPH_SNAPSHOT — both rescue ex_008 ↔ cv_006,
+  // and the UNION in Query #4 dedupes. Kept here so the row demonstrates the schema.
   { zid: "zid_88341",            currentZid: "zid_88342", staleDate: "2026-05-14" },
   // Chain-collapsed transition: zid_88100 originally went stale on 2026-04-15 when it merged
   // into zid_88341. zid_88341 has since collapsed into zid_88342, so this row's currentZid
   // was rewritten to zid_88342 — but staleDate is preserved as 2026-04-15.
   { zid: "zid_88100",            currentZid: "zid_88342", staleDate: "2026-04-15" },
-  // Placeholder promotion: cz_9a1…d44 was originally written with a placeholder ZID;
-  // on 2026-05-28 SuperGraph promoted it to a real ZID, marking the placeholder stale.
+  // Placeholder promotion (safety-net only path): cz_9a1…d44 was originally written with
+  // a placeholder ZID on ex_005-style exposures. On 2026-05-28 SuperGraph promoted it.
+  // Because placeholder ZIDs aren't identifier rows in SUPERGRAPH_SNAPSHOT, forward
+  // identifier resolution can't rescue this case — only the ZID-walk safety net can.
   { zid: "zid_PLACEHOLDER_001",  currentZid: "zid_88450", staleDate: "2026-05-28" },
 ];
 
@@ -435,12 +470,12 @@ const STRAT_AGG_INC_CONVS = (STRAT_AGG_TRT_RATE - STRAT_AGG_CTL_RATE) * STRAT_AG
 // Diagnostics — quality of the attribution run itself
 const DIAGNOSTICS = {
   first_pass_match_rate:    0.864,
-  second_pass_rescue_rate:  0.072,   // rescued by transition-log walk
+  second_pass_rescue_rate:  0.072,   // rescued by forward identifier resolution (primary) + ZID-walk safety net
   household_rescue_rate:    0.064,   // rescued by household projection
   placeholder_conv_only:    0.048,   // conversions with only placeholder ZIDs
   lineage_parity_rate:      0.470,   // % of credited conversions where customer-ID reporting is possible
   avg_touchpoints_per_conv: 3.2,
-  transition_log_walk_hits: 1349,
+  second_pass_rescue_hits:  1349,    // {forward_identifier: 1187, zid_walk_only: 162}
   household_rescue_hits:    1196,
   last_eel_ingest:          "2026-06-05 03:14 UTC",
   last_graph_snapshot:      "sg_2026-06-04",
@@ -569,19 +604,50 @@ FROM cz JOIN ez
   ON cz.conv_zid = ez.exp_zid
  AND ez.exp_time <= cz.conv_time
  AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
-  { name: "4. Second-pass transition-log lookup (unmatched conversions)",
-    description: "For conversions with no first-pass match, recover the predecessor stale ZIDs by looking them up in the aggregated ZidTransitionMapping. Because chains are collapsed at write time, a single equality join on currentZid returns every stale ZID that ever resolved to the conversion's ZID — no recursive walk needed. staleDate is day-grained and bounded by the attribution window.",
-    sql: `WITH unmatched AS (
-  SELECT conv_id, conv_zid, conv_time FROM ...   /* see step 3 */
+  { name: "4. Second-pass rescue (forward identifier resolution + ZID-walk safety net)",
+    description: "Two complementary rescue paths, UNIONed into an effective-ZID set per exposure, then re-overlapped against conversions. (a) Forward identifier re-resolution is the primary path: re-ask the current SuperGraph snapshot for the ZID of every original_identifier on the exposure. Catches identifier reassignments and placeholder promotions since exposure time. (b) Forward ZID walk is the safety net: when the identifier has since been deactivated and is gone from the snapshot, the exposure's original resolved_zid still walks forward through the aggregated zid_transition_mapping. Either path can recover the same rescue; UNION dedupes.",
+    sql: `WITH exposures_in_window AS (
+  SELECT event_id, original_identifiers, resolved_zids
+  FROM eel.exposure_events
+  WHERE campaign_id = :campaign_id
+    AND event_time BETWEEN :win_start AND :win_end
+),
+-- (a) Primary: re-resolve each exposure's identifiers against the current
+--     SuperGraph snapshot. Catches identifier reassignments and placeholder
+--     promotions since exposure-time -- provided the identifier is still active.
+forward_identifier_zids AS (
+  SELECT e.event_id, sg.zeta_id AS effective_zid
+  FROM exposures_in_window e,
+       LATERAL FLATTEN(input => e.original_identifiers) id
+  JOIN supergraph.zig_zid_membership sg
+    ON sg.node_type = id.value:type::string
+   AND sg.node_id   = id.value:value::string
+   AND sg.dt        = :graph_snapshot_dt      -- latest available partition
+),
+-- (b) Safety net: forward-walk each exposure's original ZID through the
+--     aggregated transition mapping. Catches cluster collapses that landed
+--     AFTER the exposure's identifier was already deactivated (so (a) can't
+--     find it). Chain-collapsed at write time -> single equality join, no
+--     recursion. staleDate bound trims the table to the attribution window.
+forward_zid_walk AS (
+  SELECT e.event_id, m.currentZid AS effective_zid
+  FROM exposures_in_window e,
+       LATERAL FLATTEN(input => e.resolved_zids) z
+  JOIN supergraph.zid_transition_mapping m
+    ON m.zid = z.value:zid::string
+   AND m.staleDate BETWEEN DATE(:win_start) AND DATE(:win_end)
+),
+effective_exposure_zids AS (
+  SELECT event_id, effective_zid FROM forward_identifier_zids
+  UNION                                       -- dedupes (a)/(b) overlap
+  SELECT event_id, effective_zid FROM forward_zid_walk
 )
-SELECT u.conv_id,
-       m.zid       AS extended_zid,
-       m.staleDate
-FROM unmatched u
-JOIN supergraph.zid_transition_mapping m
-  ON m.currentZid = u.conv_zid
- AND m.staleDate BETWEEN DATE(:win_start) AND DATE(u.conv_time);
--- then JOIN exposure_events again on extended_zid` },
+-- Re-run overlap of (conversion ZIDs) x (effective exposure ZIDs).
+SELECT u.conv_id, eez.event_id AS matched_exposure_id
+FROM unmatched_conversions u,                 -- complement of step 3
+     LATERAL FLATTEN(input => u.resolved_zids) cz
+JOIN effective_exposure_zids eez
+  ON eez.effective_zid = cz.value:zid::string;` },
   { name: "5. Apply attribution model → per-ZID credit table",
     description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
     sql: `-- Pseudocode: for each conversion, for each touchpoint t in matched set,
@@ -1105,7 +1171,7 @@ function TopEntitiesByGrouping({ grouping }) {
       ["zid_88102", "em_md5 / cs", "Display · Email", "1", fmtUsd(244)],
       ["zid_88103", "em_md5", "Email", "1", fmtUsd(244)],
       ["zid_88207", "em_md5 / pa", "Inbox · Display", "2", fmtUsd(1817)],
-      ["zid_88342", "cs (via transition-log walk)", "Display", "1", fmtUsd(521)],
+      ["zid_88342", "cs (via forward identifier resolution)", "Display", "1", fmtUsd(521)],
       ["zid_88450", "em_md5 / cz (placeholder → promoted)", "Email", "1", fmtUsd(388)],
     ]}
   />;
@@ -1427,12 +1493,12 @@ function Diagnostics({ grouping }) {
           value={fmtPct(DIAGNOSTICS.first_pass_match_rate)}
           label="First-pass match rate"
           tone="success"
-          tip="Share of conversions that matched at least one exposure via direct ZID overlap. A high rate (>80%) means most measurement happens without needing the transition-log walk or household projection."
+          tip="Share of conversions that matched at least one exposure via direct ZID overlap on the original resolved_zids. A high rate (>80%) means most measurement happens without needing second-pass rescue or household projection."
         />
         <Stat
           value={fmtPct(DIAGNOSTICS.second_pass_rescue_rate)}
-          label={`2nd-pass rescue (${fmtInt(DIAGNOSTICS.transition_log_walk_hits)} convs)`}
-          tip="Share of conversions that had no first-pass match but were rescued by walking the SuperGraph Transition Logs to find a predecessor ZID. These conversions would be lost in a system without temporal graph history."
+          label={`2nd-pass rescue (${fmtInt(DIAGNOSTICS.second_pass_rescue_hits)} convs)`}
+          tip="Share of conversions that had no first-pass match but were rescued in the second pass. Primary path: re-resolving exposure identifiers against the current SuperGraph snapshot (picks up identifier reassignments and placeholder promotions). Safety net: forward-walking each exposure's original ZID through the aggregated transition mapping (covers identifiers that have since been deactivated). These conversions would be lost in a system without either temporal history or a current SuperGraph view."
         />
         {showHh && (
           <Stat
@@ -1575,6 +1641,7 @@ const DATA_TABS = [
   { value: "conversions",      label: "EEL · Conversions" },
   { value: "identity_events",  label: "EEL · Identity events" },
   { value: "audience_lineage", label: "Lineage Logs · Audience" },
+  { value: "sg_snapshot",      label: "SuperGraph · Current snapshot" },
   { value: "transition_logs",  label: "SuperGraph · Transition logs" },
   { value: "queries",          label: "Joining queries (SQL)" },
 ];
@@ -1661,9 +1728,18 @@ function DataInspector() {
             />
           </div>
         )}
+        {tab === "sg_snapshot" && (
+          <div className="col" style={{ gap: 6 }}>
+            <div className="t-small t-sec"><b>Primary second-pass rescue source.</b> The current SuperGraph state, stored in production as <span className="t-mono">zig_zid_membership</span> (partitioned by <span className="t-mono">dt</span>; the latest partition is "now"). For unmatched conversions the engine re-asks this table for the current ZID of every <span className="t-mono">original_identifier</span> on each in-window exposure, picking up identifier reassignments and placeholder promotions that have happened since exposure time. As long as the identifier is still active, this single join handles the rescue without touching the transition logs.</div>
+            <Tbl
+              headers={["identifier_type", "identifier_value", "current_zid", "last_modified_dt"]}
+              rows={SUPERGRAPH_SNAPSHOT.map(s => [s.identifier_type, s.identifier_value, s.current_zid, s.last_modified_dt])}
+            />
+          </div>
+        )}
         {tab === "transition_logs" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine looks up the stale-ZID rows whose <span className="t-mono">currentZid</span> matches the conversion's ZID to recover the predecessor IDs. Production stores this as an aggregated <span className="t-mono">ZidTransitionMapping</span>: chains are collapsed at write time so a single hop returns the final answer (no recursion needed); <span className="t-mono">staleDate</span> is set once when each <span className="t-mono">zid</span> first goes stale and never refreshed; rows have a finite TTL.</div>
+            <div className="t-small t-sec"><b>Safety net for the second-pass rescue.</b> Forward identifier resolution against the SuperGraph snapshot is the primary path; this table only earns its keep when an exposure's identifier has since been deactivated (gone from the snapshot), in which case the exposure's original <span className="t-mono">resolved_zid</span> still walks forward to its <span className="t-mono">currentZid</span> here. Production stores this as an aggregated <span className="t-mono">ZidTransitionMapping</span>: chains are collapsed at write time so a single equality join returns the final answer (no recursion); <span className="t-mono">staleDate</span> is set once when each <span className="t-mono">zid</span> first goes stale and never refreshed; rows have a finite TTL.</div>
             <Tbl
               headers={["zid (stale)", "currentZid", "staleDate"]}
               rows={TRANSITION_LOGS.map(t => [t.zid, t.currentZid, t.staleDate])}
