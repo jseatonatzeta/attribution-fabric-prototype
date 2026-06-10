@@ -503,26 +503,7 @@ function athenaInsights(model, grouping, viewMode) {
 }
 
 const QUERIES = [
-  { name: "1. EEL ingest enrichment — stamp lineage onto each exposure (run inside EEL, not by attribution)",
-    description: "Run by the EEL ingestion job, not by the attribution engine. For each incoming exposure, EEL looks up the source audience's lineage row whose resolved_zids overlap the exposure's resolved ZIDs, plus the waterfall config in effect, and writes both onto the exposure row as lineage_enrichment. After this, every downstream consumer reads original_identifier / mapping_path directly off the exposure — no further joins to the lineage store.",
-    sql: `INSERT INTO eel.exposure_events (
-  event_id, …, lineage_enrichment
-)
-SELECT
-  raw.event_id, …,
-  CASE WHEN l.lineage_id IS NULL THEN NULL ELSE OBJECT_CONSTRUCT(
-    'lineage_id',                l.lineage_id,
-    'original_identifier',       l.customer_supplied_id,
-    'original_identifier_type',  l.customer_id_type,
-    'mapping_path',              l.mapping_path,
-    'waterfall_config_id',       w.waterfall_config_id
-  ) END AS lineage_enrichment
-FROM raw_exposures raw
-JOIN audiences          a  ON a.audience_id = raw.audience_id
-LEFT JOIN audience_lineage   l  ON l.audience_id = a.audience_id
-                              AND ARRAYS_OVERLAP(l.resolved_zids, raw.resolved_zids[*]:zid)
-LEFT JOIN waterfall_config   w  ON w.waterfall_config_id = a.waterfall_config_id;` },
-  { name: "2. Exposure events for the campaign window",
+  { name: "1. Exposure events for the campaign window",
     description: "EEL impressions (served + ghost), multi-ZID resolved, with arm, original identifiers, and the lineage_enrichment object that EEL stamped at ingest. Once the engine has this it never has to call the lineage service again.",
     sql: `SELECT
   event_id, event_time, source_system, event_subtype,
@@ -535,7 +516,7 @@ WHERE account_id  = :account_id
   AND campaign_id = :campaign_id
   AND event_subtype IN ('impression', 'ghost_impression')
   AND event_time  BETWEEN :win_start AND :win_end;` },
-  { name: "3. Conversion events in the attribution window",
+  { name: "2. Conversion events in the attribution window",
     description: "EEL conversions for the account, extended by the campaign's attribution_window_days.",
     sql: `SELECT
   event_id, event_time, source_system, event_subtype,
@@ -545,7 +526,7 @@ FROM eel.conversion_events
 WHERE account_id = :account_id
   AND event_time BETWEEN :win_start
                      AND DATEADD(day, :attribution_window_days, :win_end);` },
-  { name: "4. First-pass attribution match (ZID overlap)",
+  { name: "3. First-pass attribution match (ZID overlap)",
     description: "Union semantics: a conversion ZID overlapping any exposure ZID is a candidate touchpoint.",
     sql: `WITH cz AS (
   SELECT event_id AS conv_id, event_time AS conv_time,
@@ -566,7 +547,7 @@ FROM cz JOIN ez
   ON cz.conv_zid = ez.exp_zid
  AND ez.exp_time <= cz.conv_time
  AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
-  { name: "5. Second-pass audit-trail walk (unmatched conversions)",
+  { name: "4. Second-pass audit-trail walk (unmatched conversions)",
     description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the audit trail.",
     sql: `WITH unmatched AS (
   SELECT conv_id, original_identifiers FROM ...   /* see step 4 */
@@ -581,7 +562,7 @@ JOIN supergraph.audit_trail at
  AND at.identifier_value = ident.value:value::string
  AND at.effective_at BETWEEN :win_start AND :conv_time;
 -- then JOIN exposure_events again on extended_zid` },
-  { name: "6. Apply attribution model → per-ZID credit table",
+  { name: "5. Apply attribution model → per-ZID credit table",
     description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
     sql: `-- Pseudocode: for each conversion, for each touchpoint t in matched set,
 -- credit_share = MODEL(t, all_touchpoints, conv_time)
@@ -595,7 +576,7 @@ SELECT exp_zid, channel, audience_id,
        SUM(credit_share)                    AS credited_count
 FROM matched_touchpoints
 GROUP BY exp_zid, channel, audience_id;` },
-  { name: "7. Project per-ZID credit → BSIN (via EEL identity events)",
+  { name: "6. Project per-ZID credit → BSIN (via EEL identity events)",
     description: "Identity events from People Service are ingested into EEL like any other event. Build an as-of-time view of (bsin → resolved_zids) by taking the latest identity event per (bsin, identifier) up to the conversion timestamp, then join per-ZID credit against it. Replaces the separate ZMP-profile-lineage SCD2 store.",
     sql: `WITH latest_id_event AS (
   SELECT
@@ -628,8 +609,8 @@ FROM per_zid_credit c
 JOIN bsin_as_of    b
   ON ARRAYS_OVERLAP(ARRAY_CONSTRUCT(c.exp_zid), b.bsin_zids)
 GROUP BY b.bsin;` },
-  { name: "8. Project per-ZID credit → customer_supplied_id (no lineage join)",
-    description: "Lineage is already stamped onto each exposure row at EEL ingest (see Query #1), so the attribution engine reads it directly. The audience_lineage table doesn't appear in this query at all — exposures missing enrichment are simply the rows that fall through to ZID-only reporting.",
+  { name: "7. Project per-ZID credit → customer_supplied_id (no lineage join)",
+    description: "Lineage is already stamped onto each exposure row at EEL ingest time, so the attribution engine reads it directly. The audience_lineage table doesn't appear in this query at all — exposures missing enrichment are simply the rows that fall through to ZID-only reporting.",
     sql: `SELECT
   e.lineage_enrichment:original_identifier::string      AS customer_supplied_id,
   e.lineage_enrichment:original_identifier_type::string AS customer_id_type,
@@ -639,7 +620,7 @@ FROM per_zid_credit       c
 JOIN eel.exposure_events  e  ON e.event_id = c.exposure_event_id
 WHERE e.lineage_enrichment IS NOT NULL
 GROUP BY 1, 2;` },
-  { name: "9. Household projection (dynamic, from observed identifiers)",
+  { name: "8. Household projection (dynamic, from observed identifiers)",
     description: "Group ZIDs that share any selected household identifier value (IP / CTV / postal) within the window.",
     sql: `WITH hh_ids AS (
   SELECT DISTINCT
@@ -659,7 +640,7 @@ GROUP BY 1, 2;` },
 )
 -- compute connected components -> household_id
 -- then SUM per_zid_credit grouped by household_id` },
-  { name: "10. Incrementality — lift by arm and channel",
+  { name: "9. Incrementality — lift by arm and channel",
     description: "Discard contaminated members (in both arms), then compute treatment − control by channel.",
     sql: `WITH arm_members AS (
   SELECT DISTINCT exp_zid AS zid, exposure_arm, experiment_id
@@ -679,7 +660,7 @@ SELECT channel, exposure_arm,
                    COUNT(DISTINCT zid))                   AS conv_rate
 FROM clean LEFT JOIN conversions USING (zid)
 GROUP BY channel, exposure_arm;` },
-  { name: "11. Per-stratum lift (deciles-as-audiences)",
+  { name: "10. Per-stratum lift (deciles-as-audiences)",
     description: "Stratified incrementality. Each (decile × arm) audience is its own audience_id; per-decile lift falls out of grouping the standard arm rates by audience_id.",
     sql: `WITH arm_rates AS (
   SELECT
@@ -710,7 +691,7 @@ JOIN arm_rates a_ctl
  AND a_trt.exposure_arm = 'served'
  AND a_ctl.exposure_arm = 'ghost'
 ORDER BY decile DESC;` },
-  { name: "12. Per-stratum propensity-score homogeneity (TRT vs CTL)",
+  { name: "11. Per-stratum propensity-score homogeneity (TRT vs CTL)",
     description: "Validates that randomization within each decile produced balanced TRT and CTL groups on the propensity score — the textbook proof for any stratified design.",
     sql: `SELECT
   e.audience_id,
@@ -1582,7 +1563,7 @@ function DataInspector() {
     <div className="section">
       <div className="row">
         <h2 style={{ margin: 0, fontSize: 16 }}>Data Inspector</h2>
-        <Pill tone="info">sample data + 10 queries</Pill>
+        <Pill tone="info">sample data + 11 queries</Pill>
         <div className="spacer"></div>
         <span className="t-small t-sec">
           The fabric stores feeding everything above. Each tab includes a one-sentence note on what the data is used for.
@@ -1631,7 +1612,10 @@ function DataInspector() {
         )}
         {tab === "audience_lineage" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Source-of-truth for audience-level identifier mapping. Consumed by EEL at ingest time to stamp <span className="t-mono">lineage_enrichment</span> onto each exposure row (see EEL · Exposures). The attribution engine never joins back to this table at query time — it just reads the stamped fields off the exposures. The four rows below seed the enrichment for any past-guests-loyalty exposure in this campaign.</div>
+            <div className="row" style={{ gap: 6 }}>
+              <Pill tone="warning">For reference — not used by the attribution engine</Pill>
+            </div>
+            <div className="t-small t-sec">Source-of-truth for audience-level identifier mapping, owned by the Lineage Service. Consumed only by EEL at ingest time to stamp <span className="t-mono">lineage_enrichment</span> onto each exposure row (see EEL · Exposures). The attribution engine never reads or joins this table — every query above pulls original_identifier and mapping_path straight off the exposure. The five rows below seeded the enrichment for the past-guests-loyalty exposures in this campaign.</div>
             <Tbl
               headers={["lineage_id", "audience_id", "customer_supplied_id", "type", "mapping_path", "resolved_zids"]}
               rows={AUDIENCE_LINEAGE.map(l => [l.lineage_id, l.audience_id.replace("aud_",""), l.customer_supplied_id, l.customer_id_type, l.mapping_path.join(" / "), l.resolved_zids.join(", ")])}
