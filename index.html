@@ -321,17 +321,17 @@ const IDENTITY_EVENTS = [
   { event_id: "id_007", event_subtype: "identifier_removed",  event_time: "2026-05-22T18:30:00Z", bsin: "bsin_002405", identifier: { type: "ph",     value: "ph/+1-555…7788" }, resolved_zids: ["zid_88451"],                                       waterfall_config_id: "wf_account_default_v3" },
 ];
 
-// SuperGraph audit trail rows. effective_at is day-grained (date partition) — production emits
-// these from a daily diff of the membership snapshot, not as an intraday event stream. Attribution
-// windows are day-grained anyway, so the loss of intraday precision is acceptable.
-const AUDIT_TRAIL = [
+// SuperGraph Transition Logs rows. effective_at is day-grained (date partition) — production
+// emits these from a daily diff of the membership snapshot, not as an intraday event stream.
+// Attribution windows are day-grained anyway, so the loss of intraday precision is acceptable.
+const TRANSITION_LOGS = [
   { identifier_type: "cs", identifier_value: "cs_abc…017", from_zid: "zid_88341",            to_zid: "zid_88342", effective_at: "2026-05-14", transition_reason: "cluster_merge" },
   { identifier_type: "mm", identifier_value: "mm_4f7…ab2", from_zid: null,                   to_zid: "zid_88207", effective_at: "2026-05-21", transition_reason: "new_identifier" },
   { identifier_type: "cz", identifier_value: "cz_9a1…d44", from_zid: "zid_PLACEHOLDER_001",  to_zid: "zid_88450", effective_at: "2026-05-28", transition_reason: "new_identifier" },
 ];
 
 // EEL exposures: impressions only (incl. ghost_impression for incrementality). propensity_score / propensity_model_id populated only for ZX-style stratified events.
-// lineage_enrichment is stamped by EEL at ingest time by calling the Lineage Service for any exposure whose audience has lineage_present:true; null otherwise.
+// lineage_enrichment is stamped by EEL at ingest time by reading from Lineage Logs for any exposure whose audience has lineage_present:true; null otherwise.
 // This means the attribution engine never has to join back to the lineage store — the customer-supplied ID and waterfall path are already on the row.
 const EEL_EXPOSURES = [
   { event_id: "ex_001", source_system: "dsp",        event_subtype: "impression",       channel: "Display", event_time: "2026-05-13T09:14:22Z", audience_id: "aud_past_guests_loyalty",   exposure_arm: "served", original_identifiers: [{type:"cs",value:"cs_abc…001"},{type:"ip",value:"73.21.x.y"}],  resolved_zids: [{zid:"zid_88102",source_identifier:"cs",is_placeholder:false}], cost: 0.014, propensity_score: null,  propensity_model_id: null, lineage_enrichment: { original_identifier: "pa/9c4f…a31", original_identifier_type: "pa", mapping_path: ["pa→em_md5", "em_md5→zid"], waterfall_config_id: "wf_account_default_v3", lineage_id: "lin_001" } },
@@ -416,12 +416,12 @@ const STRAT_AGG_INC_CONVS = (STRAT_AGG_TRT_RATE - STRAT_AGG_CTL_RATE) * STRAT_AG
 // Diagnostics — quality of the attribution run itself
 const DIAGNOSTICS = {
   first_pass_match_rate:    0.864,
-  second_pass_rescue_rate:  0.072,   // rescued by audit-trail walk
+  second_pass_rescue_rate:  0.072,   // rescued by transition-log walk
   household_rescue_rate:    0.064,   // rescued by household projection
   placeholder_conv_only:    0.048,   // conversions with only placeholder ZIDs
   lineage_parity_rate:      0.470,   // % of credited conversions where customer-ID reporting is possible
   avg_touchpoints_per_conv: 3.2,
-  audit_trail_walk_hits:    1349,
+  transition_log_walk_hits: 1349,
   household_rescue_hits:    1196,
   last_eel_ingest:          "2026-06-05 03:14 UTC",
   last_graph_snapshot:      "sg_2026-06-04",
@@ -507,7 +507,7 @@ function athenaInsights(model, grouping, viewMode) {
 
 const QUERIES = [
   { name: "1. Exposure events for the campaign window",
-    description: "EEL impressions (served + ghost), multi-ZID resolved, with arm, original identifiers, and the lineage_enrichment object that EEL stamped at ingest. Once the engine has this it never has to call the lineage service again.",
+    description: "EEL impressions (served + ghost), multi-ZID resolved, with arm, original identifiers, and the lineage_enrichment object that EEL stamped at ingest. Once the engine has this it never has to read Lineage Logs again.",
     sql: `SELECT
   event_id, event_time, source_system, event_subtype,
   channel, audience_id, exposure_arm, experiment_id,
@@ -550,18 +550,18 @@ FROM cz JOIN ez
   ON cz.conv_zid = ez.exp_zid
  AND ez.exp_time <= cz.conv_time
  AND cz.conv_time - ez.exp_time <= INTERVAL ':attribution_window_days days';` },
-  { name: "4. Second-pass audit-trail walk (unmatched conversions)",
-    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the audit trail. effective_at is day-grained (SuperGraph's daily diff partition), so the join window is compared at date precision.",
+  { name: "4. Second-pass transition-log walk (unmatched conversions)",
+    description: "For conversions with no first-pass match, extend the candidate ZID set with from_zid values from the SuperGraph Transition Logs. effective_at is day-grained (the daily diff partition), so the join window is compared at date precision.",
     sql: `WITH unmatched AS (
   SELECT conv_id, conv_zid, conv_time FROM ...   /* see step 3 */
 )
 SELECT u.conv_id,
-       at.from_zid AS extended_zid,
-       at.effective_at
+       tl.from_zid AS extended_zid,
+       tl.effective_at
 FROM unmatched u
-JOIN supergraph.audit_trail at
-  ON at.to_zid       = u.conv_zid
- AND at.effective_at BETWEEN DATE(:win_start) AND DATE(u.conv_time);
+JOIN supergraph.transition_logs tl
+  ON tl.to_zid       = u.conv_zid
+ AND tl.effective_at BETWEEN DATE(:win_start) AND DATE(u.conv_time);
 -- then JOIN exposure_events again on extended_zid` },
   { name: "5. Apply attribution model → per-ZID credit table",
     description: "Allocate matched conversion credit to touchpoints according to the chosen MTA model.",
@@ -1083,7 +1083,7 @@ function TopEntitiesByGrouping({ grouping }) {
       ["zid_88102", "em_md5 / cs", "Display · Email", "1", fmtUsd(244)],
       ["zid_88103", "em_md5", "Email", "1", fmtUsd(244)],
       ["zid_88207", "em_md5 / pa", "Inbox · Display", "2", fmtUsd(1817)],
-      ["zid_88342", "cs (via audit-trail walk)", "Display", "1", fmtUsd(521)],
+      ["zid_88342", "cs (via transition-log walk)", "Display", "1", fmtUsd(521)],
       ["zid_88450", "em_md5 / cz (placeholder → promoted)", "Email", "1", fmtUsd(388)],
     ]}
   />;
@@ -1405,12 +1405,12 @@ function Diagnostics({ grouping }) {
           value={fmtPct(DIAGNOSTICS.first_pass_match_rate)}
           label="First-pass match rate"
           tone="success"
-          tip="Share of conversions that matched at least one exposure via direct ZID overlap. A high rate (>80%) means most measurement happens without needing the audit-trail walk or household projection."
+          tip="Share of conversions that matched at least one exposure via direct ZID overlap. A high rate (>80%) means most measurement happens without needing the transition-log walk or household projection."
         />
         <Stat
           value={fmtPct(DIAGNOSTICS.second_pass_rescue_rate)}
-          label={`2nd-pass rescue (${fmtInt(DIAGNOSTICS.audit_trail_walk_hits)} convs)`}
-          tip="Share of conversions that had no first-pass match but were rescued by walking the SuperGraph audit trail to find a predecessor ZID. These conversions would be lost in a system without temporal graph history."
+          label={`2nd-pass rescue (${fmtInt(DIAGNOSTICS.transition_log_walk_hits)} convs)`}
+          tip="Share of conversions that had no first-pass match but were rescued by walking the SuperGraph Transition Logs to find a predecessor ZID. These conversions would be lost in a system without temporal graph history."
         />
         {showHh && (
           <Stat
@@ -1516,7 +1516,7 @@ const FEATURE_ENHANCEMENTS = [
   { num: 9, name: "Per-audience drill-down",
     body: "Click an audience row to filter the entire dashboard to that audience. EEL already keys exposures by audience_id, so this is a free filter through every section." },
   { num: 10, name: "Saved views",
-    body: "Name and bookmark any {model, grouping, waterfall, view mode} combo, shareable by URL. Most-asked-for marketer feature, and the only one that needs a small app-level store (attribution_views table)." },
+    body: "Name and bookmark any {model, grouping, waterfall, view mode} combo, shareable by URL. The only enhancement on this list that needs a small app-level store (attribution_views table) rather than just a new projection over EEL." },
   { num: 13, name: "Stratified-experiment drill-down (propensity-decile, geo-test, etc.)",
     body: "Per-stratum lift, allocation, and homogeneity-validation views for any campaign whose audiences are tagged as a stratified-design family — demonstrated for ZX-style propensity-decile randomization in the Stratified test design section above. Reuses the standard audience_id plumbing (deciles-as-audiences) plus optional propensity_score / propensity_model_id fields on EEL exposures; no new schema concept required." },
 ];
@@ -1526,7 +1526,7 @@ function FeatureEnhancementsSection() {
     <div className="section">
       <h2 style={{ margin: 0, fontSize: 16 }}>Supported Feature Enhancements</h2>
       <p className="t-sec" style={{ margin: 0 }}>
-        Features the fabric already supports — these can be added to the UI without changes to EEL, the lineage stores, or the SuperGraph audit trail.
+        Features the fabric already supports — these can be added to the UI without changes to EEL, Lineage Logs, or the SuperGraph Transition Logs.
       </p>
       <Card flush>
         <div>
@@ -1552,8 +1552,8 @@ const DATA_TABS = [
   { value: "exposures",        label: "EEL · Exposures" },
   { value: "conversions",      label: "EEL · Conversions" },
   { value: "identity_events",  label: "EEL · Identity events" },
-  { value: "audience_lineage", label: "Lineage · Audience" },
-  { value: "audit_trail",      label: "SuperGraph · Audit trail" },
+  { value: "audience_lineage", label: "Lineage Logs · Audience" },
+  { value: "transition_logs",  label: "SuperGraph · Transition logs" },
   { value: "queries",          label: "Joining queries (SQL)" },
 ];
 
@@ -1576,7 +1576,7 @@ function DataInspector() {
         </div>
         {tab === "exposures" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used as the candidate touchpoint set the attribution engine matches conversions back to — every ad impression delivered for the campaign, served and ghost alike. The propensity columns are populated only for events from stratified-design experiments (ZX-style decile randomization). The <span className="t-mono">lineage_enrichment</span> column is stamped by EEL at ingest by calling the Lineage Service for audiences built from customer-supplied IDs; once it's on the row, the attribution engine never needs to query the lineage store directly.</div>
+            <div className="t-small t-sec">Used as the candidate touchpoint set the attribution engine matches conversions back to — every ad impression delivered for the campaign, served and ghost alike. The propensity columns are populated only for events from stratified-design experiments (ZX-style decile randomization). The <span className="t-mono">lineage_enrichment</span> column is stamped by EEL at ingest by reading from Lineage Logs for audiences built from customer-supplied IDs; once it's on the row, the attribution engine never needs to read Lineage Logs directly.</div>
             <Tbl
               headers={["event_id", "source", "subtype", "channel", "time", "arm", "audience", "original_identifiers", "resolved_zids", "propensity_score", "propensity_model", "lineage_enrichment"]}
               columnAlign={["left","left","left","left","left","left","left","left","left","right","left","left"]}
@@ -1616,7 +1616,7 @@ function DataInspector() {
             <div className="row" style={{ gap: 6 }}>
               <Pill tone="warning">For reference — not used by the attribution engine</Pill>
             </div>
-            <div className="t-small t-sec">Source-of-truth for audience-level identifier mapping, owned by the Lineage Service. Consumed only by EEL at ingest time to stamp <span className="t-mono">lineage_enrichment</span> onto each exposure row (see EEL · Exposures). The attribution engine never reads or joins this table — every query above pulls original_identifier and mapping_path straight off the exposure. The five rows below seeded the enrichment for the past-guests-loyalty exposures in this campaign.</div>
+            <div className="t-small t-sec">Source-of-truth for audience-level identifier mapping, owned by Lineage Logs. Consumed only by EEL at ingest time to stamp <span className="t-mono">lineage_enrichment</span> onto each exposure row (see EEL · Exposures). The attribution engine never reads or joins this table — every query above pulls original_identifier and mapping_path straight off the exposure. The five rows below seeded the enrichment for the past-guests-loyalty exposures in this campaign.</div>
             <Tbl
               headers={["lineage_id", "audience_id", "customer_supplied_id", "type", "mapping_path", "resolved_zids"]}
               rows={AUDIENCE_LINEAGE.map(l => [l.lineage_id, l.audience_id.replace("aud_",""), l.customer_supplied_id, l.customer_id_type, l.mapping_path.join(" / "), l.resolved_zids.join(", ")])}
@@ -1639,12 +1639,12 @@ function DataInspector() {
             />
           </div>
         )}
-        {tab === "audit_trail" && (
+        {tab === "transition_logs" && (
           <div className="col" style={{ gap: 6 }}>
-            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks this trail to find the predecessor ZIDs that did.</div>
+            <div className="t-small t-sec">Used by the second-pass match — when a conversion lands on a ZID that didn't exist (or had no exposures) at exposure time, the engine walks the transition logs to find the predecessor ZIDs that did.</div>
             <Tbl
               headers={["identifier_type", "identifier_value", "from_zid", "to_zid", "effective_at", "transition_reason"]}
-              rows={AUDIT_TRAIL.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at, a.transition_reason])}
+              rows={TRANSITION_LOGS.map(a => [a.identifier_type, a.identifier_value, a.from_zid ?? "(none)", a.to_zid, a.effective_at, a.transition_reason])}
             />
           </div>
         )}
